@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Financial Health Dashboard{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:1rem; display:flex; align-items:center; gap:12px;">
+  <button class="btn btn-secondary" onclick="history.back()">← Back</button>
+  <h2 style="margin:0;">Financial Health Dashboard</h2>
+  <div style="flex:1"></div>
+  <a class="btn" href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+  <a class="btn" href="{{ url_for('auth.logout') }}">Logout</a>
+  </div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <h3>Financial Summary (Last 90 Days)</h3>
+  <div style="display:grid; grid-template-columns: repeat(2, minmax(200px, 1fr)); gap:10px; margin-top:10px;">
+    <div><strong>Income:</strong> <span id="fs-income">—</span></div>
+    <div><strong>Expenses:</strong> <span id="fs-expenses">—</span></div>
+    <div><strong>Savings Rate:</strong> <span id="fs-sr">—</span></div>
+    <div><strong>Balance:</strong> <span id="fs-balance">—</span></div>
+    <div style="grid-column:1/-1;"><small>Since <span id="fs-since">—</span></small></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <h3>Personalized Advice</h3>
+  <div id="ai-advice" style="white-space:pre-wrap; margin-top:8px;">Loading advice…</div>
+</div>
+
+<div class="card" style="margin-bottom:1rem;">
+  <h3>Create a Financial Goal</h3>
+  <form id="goal-form">
+    <div class="form-group">
+      <label for="goal-name">Goal Name</label>
+      <input id="goal-name" name="goal_name" placeholder="e.g., Emergency fund" required />
+    </div>
+    <div class="form-group">
+      <label for="target-amount">Target Amount (৳)</label>
+      <input id="target-amount" name="target_amount" type="number" min="0" step="0.01" required />
+    </div>
+    <div class="form-group">
+      <label for="due-date">Due Date</label>
+      <input id="due-date" name="due_date" type="date" />
+    </div>
+  <button class="btn" type="submit">Save Goal</button>
+  </form>
+  <small>Note: Goal creation API will be added in a later step.</small>
+  </div>
+
+<div class="card">
+  <h3>Your Goals</h3>
+  <div id="goals-empty" style="display:none;">No goals yet.</div>
+  <table id="goals-table" style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr>
+        <th style="text-align:left; padding:6px;">Name</th>
+        <th style="text-align:right; padding:6px;">Current</th>
+        <th style="text-align:right; padding:6px;">Target</th>
+        <th style="text-align:right; padding:6px;">Progress</th>
+        <th style="text-align:left; padding:6px;">Due</th>
+      </tr>
+    </thead>
+    <tbody id="goals-body"></tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block header %}{% endblock %}
+
+{% block scripts %}
+<script>
+(async function loadSummary(){
+  try {
+    const res = await fetch('/api/financial_summary', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const json = await res.json();
+    const fmt = (n) => typeof n === 'number' ? n.toFixed(2) : n;
+    if (json.success) {
+      const d = json.data || {}; 
+      document.getElementById('fs-income').textContent = `৳${fmt(d.total_income || 0)}`;
+      document.getElementById('fs-expenses').textContent = `৳${fmt(d.total_expenses || 0)}`;
+      document.getElementById('fs-sr').textContent = `${fmt(d.savings_rate || 0)}%`;
+      document.getElementById('fs-balance').textContent = `৳${fmt(d.balance || 0)}`;
+      document.getElementById('fs-since').textContent = d.since || '';
+
+      // Advice
+      document.getElementById('ai-advice').textContent = (json.ai_advice || '').trim() || 'No advice available';
+
+      // Goals
+      const goals = json.goals || [];
+      const tbody = document.getElementById('goals-body');
+      tbody.innerHTML = '';
+      if (!goals.length) {
+        document.getElementById('goals-empty').style.display = 'block';
+        document.getElementById('goals-table').style.display = 'none';
+      } else {
+        document.getElementById('goals-empty').style.display = 'none';
+        document.getElementById('goals-table').style.display = 'table';
+        goals.forEach(g => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style='padding:6px;'>${g.goal_name}</td>
+            <td style='padding:6px; text-align:right;'>৳${fmt(g.current_amount || 0)}</td>
+            <td style='padding:6px; text-align:right;'>৳${fmt(g.target_amount || 0)}</td>
+            <td style='padding:6px; text-align:right;'>${fmt(g.progress_pct || 0)}%</td>
+            <td style='padding:6px;'>${g.due_date || ''}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    } else {
+      document.getElementById('ai-advice').textContent = json.message || 'Failed to load advice';
+    }
+  } catch (e) {
+    document.getElementById('ai-advice').textContent = 'Error loading data.';
+  }
+})();
+
+// Handle goal creation without page reload
+document.getElementById('goal-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const btn = this.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  const fd = new FormData(this);
+  try {
+    const res = await fetch('/api/goals/add', { method: 'POST', body: fd });
+    const json = await res.json();
+    if (!json.success) {
+      alert(json.message || 'Failed to save goal');
+      return;
+    }
+    // Insert new row
+    const g = json.goal;
+    const fmt = (n) => typeof n === 'number' ? n.toFixed(2) : n;
+    const tbody = document.getElementById('goals-body');
+    document.getElementById('goals-empty').style.display = 'none';
+    document.getElementById('goals-table').style.display = 'table';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style='padding:6px;'>${g.goal_name}</td>
+      <td style='padding:6px; text-align:right;'>৳${fmt(g.current_amount || 0)}</td>
+      <td style='padding:6px; text-align:right;'>৳${fmt(g.target_amount || 0)}</td>
+      <td style='padding:6px; text-align:right;'>${fmt(g.progress_pct || 0)}%</td>
+      <td style='padding:6px;'>${g.due_date || ''}</td>
+    `;
+    tbody.prepend(tr);
+    // Reset form
+    this.reset();
+  } catch(err) {
+    alert('Network error while saving goal');
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

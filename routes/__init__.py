@@ -8,6 +8,7 @@ def register_blueprints(app):
     from .notification_routes import notification_bp
     from .request_routes import requests_bp
     from .split_routes import split_bp
+    from .advice_routes import advice_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -18,4 +19,5 @@ def register_blueprints(app):
     app.register_blueprint(notification_bp)
     app.register_blueprint(requests_bp)
     app.register_blueprint(split_bp)
+    app.register_blueprint(advice_bp)
  

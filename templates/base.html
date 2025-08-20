@@ -201,15 +201,17 @@
 <body>
     <div class="container">
         {% if session.user_id %}
+        {% block header %}
         <div class="header">
             <div class="logo">DashCapital</div>
             <div class="nav-links">
-                <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('send_request') }}">Send Request</a>
-                <a href="{{ url_for('split_bill') }}">Split Bill</a>
-                <a href="{{ url_for('logout') }}">Logout</a>
+                <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('requests.request_money_page') }}">Send Request</a>
+                <a href="{{ url_for('split.split_bill_page') }}">Split Bill</a>
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
             </div>
         </div>
+        {% endblock %}
         {% endif %}
         
         {% with messages = get_flashed_messages(with_categories=true) %}

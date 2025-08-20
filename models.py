@@ -16,6 +16,8 @@ class User(db.Model):
     balance = db.Column(db.Float, default=0.0, nullable=False)
 
     transactions = db.relationship('Transaction', backref='user', lazy=True)
+    # Financial goals set by the user
+    financial_goals = db.relationship('FinancialGoal', backref='user', lazy=True, cascade='all, delete-orphan')
 
 class Payee(db.Model):
     __tablename__ = 'payees'
@@ -95,4 +97,17 @@ class SplitBillShare(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='pending', nullable=False)  # pending/paid/rejected
     paid_at = db.Column(db.DateTime)
+
+
+# --- Financial Goals ---
+class FinancialGoal(db.Model):
+    __tablename__ = 'financial_goals'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    goal_name = db.Column(db.String(120), nullable=False)
+    target_amount = db.Column(db.Float, nullable=False)
+    current_amount = db.Column(db.Float, default=0.0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    due_date = db.Column(db.Date)
 

@@ -4,3 +4,7 @@ Werkzeug
 SQLAlchemy
 pymysql
 mysql-connector-python
+google-generativeai
+yfinance
+google-api-python-client
+python-dotenv
