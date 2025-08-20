@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Split Shares</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .page { max-width: 900px; margin: 18px auto; }
+    .shares { display:grid; grid-template-columns: 1fr; gap:12px; }
+    .row { display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
+    .meta { color:#6b7280; font-size:12px; }
+    .status { font-weight:700; }
+    .pill { padding:2px 8px; border-radius:999px; font-size:12px; }
+    .pending { background:#fff7ed; color:#9a3412; }
+    .paid { background:#ecfdf5; color:#065f46; }
+    .rejected { background:#fef2f2; color:#991b1b; }
+    .actions { display:flex; gap:8px; }
+    /* Ensure logo visibility */
+    .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+    <div class="title">My Split Shares</div>
+    <div class="nav-actions"></div>
+  </nav>
+  <div class="container page">
+    <div class="card"><div class="card-body">
+      {% if shares and shares|length > 0 %}
+      <div class="shares">
+        {% for s in shares %}
+          <div class="row">
+            <div>
+              <div style="font-weight:800">{{ s.title }}</div>
+              <div class="meta">Creator: {{ s.creator }} • Receiver: {{ s.destination }} • Created: {{ s.created_at }}</div>
+            </div>
+            <div style="text-align:right">
+              <div>Amount: ৳{{ '%.2f'|format(s.amount) }}</div>
+              <div class="status"><span class="pill {{ s.status }}">{{ s.status|capitalize }}</span></div>
+              <div class="actions">
+                {% if s.status == 'pending' %}
+                  <button class="btn" onclick="payShare({{ s.id }})">Pay</button>
+                  <button class="btn danger" onclick="rejectShare({{ s.id }})">Reject</button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      {% else %}
+        <div style="text-align:center; color:#6b7280">No split shares yet.</div>
+      {% endif %}
+    </div></div>
+  </div>
+  <script>
+    async function call(action, id){
+      const res = await fetch('/split_share/api/process', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, share_id: id }) });
+      const data = await res.json();
+      if(!data.success){ alert(data.message || 'Failed'); return; }
+      location.reload();
+    }
+    function payShare(id){ call('pay', id); }
+    function rejectShare(id){ call('reject', id); }
+  </script>
+  <div class="back-button-container">
+    <button class="back-button" onclick="location.href='{{ url_for('dashboard.dashboard') }}'">Back</button>
+  </div>
+</body>
+</html>
+

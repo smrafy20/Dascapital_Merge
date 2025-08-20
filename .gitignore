@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env
+venv/
+ENV/
+.env.*
+
+# VS Code
+.vscode/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database
+*.sqlite3
+*.db
+
+# Cookies
+cookies.txt
+
+# Misc
+*.bak
+*.swp
+*.tmp
+
+# Static and templates (if generated)
+# static/
+# templates/

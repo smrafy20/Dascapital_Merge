@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transaction History</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .page { max-width: 980px; margin: 18px auto; }
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .filters { display:flex; gap:8px; flex-wrap: wrap; }
+    .chip { padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; background:#fff; color:#111827; font-weight:600; cursor:pointer; }
+    .chip.active { background:#111827; color:#fff; border-color:#111827; }
+    .list { display:grid; grid-template-columns: 1fr; gap:10px; }
+    .trx { display:flex; align-items:center; gap:12px; padding:12px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 6px 14px rgba(0,0,0,0.06); }
+    .icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; }
+    .icon.add { background:#ecfdf5; color:#065f46; }
+    .icon.send { background:#fef2f2; color:#991b1b; }
+    .main { flex:1; }
+    .title { font-weight:800; color:#111827; }
+    .meta { color:#6b7280; font-size:12px; }
+    .amt { font-weight:800; }
+    .amt.pos { color:#065f46; }
+    .amt.neg { color:#991b1b; }
+    .actions { margin-top:8px; display:flex; gap:8px; }
+    .btn { padding:8px 10px; border:none; border-radius:8px; background:#3e75c2; color:#fff; cursor:pointer; }
+    .btn.secondary { background:#111827; }
+    /* Ensure logo visibility */
+    .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+    <div class="title">History</div>
+    <div class="nav-actions"></div>
+  </nav>
+
+  <div class="container page">
+    <div class="card">
+      <div class="card-body">
+        <div class="header">
+          <h2 style="margin:0">All Transactions</h2>
+          <div class="filters">
+            <button class="chip active" data-filter="all">All</button>
+            <button class="chip" data-filter="add">Add</button>
+            <button class="chip" data-filter="send">Send</button>
+            <button class="chip" data-filter="request">Request</button>
+            <button class="chip" data-filter="split">Split</button>
+            <a class="btn secondary" href="{{ url_for('statements.download_statements') }}">Download Statement</a>
+          </div>
+        </div>
+
+        {% if transactions and transactions|length > 0 %}
+        <div id="trxList" class="list">
+          {% for t in transactions %}
+          {% set counterparty = (users_by_phone.get(t.source_dest) if users_by_phone else None) %}
+          {% set name_phone = (counterparty.full_name ~ ' (' ~ counterparty.phone ~ ')') if counterparty else (t.source_dest or '—') %}
+          <div class="trx" data-type="{{ t.type }}" data-method="{{ (t.method or '')|lower }}">
+            <div class="icon {{ 'add' if t.type=='add' else 'send' }}">{{ '+' if t.type=='add' else '−' }}</div>
+            <div class="main">
+              <div class="title">{{ t.method|capitalize }} • {{ 'Credit' if t.type=='add' else 'Debit' }}</div>
+              <div class="meta">{{ t.trx_id }} • {{ name_phone }} • {{ t.timestamp.strftime('%b %d, %Y %I:%M %p') if t.timestamp else '' }}</div>
+            </div>
+            <div class="amt {{ 'pos' if t.type=='add' else 'neg' }}">{{ ('+' if t.type=='add' else '-') + '৳' + ('%.2f' % t.amount) }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <div style="text-align:center; color:#6b7280">No transactions yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="back-button-container">
+    <button class="back-button" onclick="history.back()">Back</button>
+  </div>
+
+  <script>
+    // Filter interactions (client-side)
+    const chips = document.querySelectorAll('.chip');
+    const list = document.getElementById('trxList');
+    chips.forEach(c=> c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active')); c.classList.add('active');
+      const f = c.getAttribute('data-filter');
+      if(!list) return;
+      [...list.children].forEach(row=>{
+        const t = (row.getAttribute('data-type')||'').toLowerCase();
+        const m = (row.getAttribute('data-method')||'').toLowerCase();
+        const show = (f==='all') || (f===t) || (f===m);
+        row.style.display = show ? '' : 'none';
+      });
+    }));
+  </script>
+</body>
+</html>

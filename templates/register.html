@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Register - DashCapital{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 2rem auto;">
+    <h2 style="text-align: center; margin-bottom: 2rem; color: #667eea;">Create Your Account</h2>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name" required placeholder="Enter your full name">
+        </div>
+        
+        <div class="form-group">
+            <label for="phone_number">Phone Number</label>
+            <input type="tel" id="phone_number" name="phone_number" required 
+                   placeholder="+8801XXXXXXXXX or +1XXXXXXXXXX">
+            <small style="color: #666; font-size: 0.9rem;">
+                Numbers starting with +8801 are classified as native users
+            </small>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required placeholder="Enter your email">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required 
+                   placeholder="Minimum 6 characters">
+        </div>
+        
+        <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" required 
+                   placeholder="Re-enter your password">
+        </div>
+        
+        <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">
+            Create Account
+        </button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 2rem;">
+        <p>Already have an account? <a href="{{ url_for('login') }}" style="color: #667eea;">Login here</a></p>
+    </div>
+    
+    <div style="background: #e8f4fd; padding: 1rem; border-radius: 8px; margin-top: 2rem;">
+        <h4 style="color: #0c5460; margin-bottom: 0.5rem;">Welcome Bonus!</h4>
+        <p style="color: #0c5460; margin: 0;">New users receive 100 BDT starting balance</p>
+    </div>
+</div>
+{% endblock %}

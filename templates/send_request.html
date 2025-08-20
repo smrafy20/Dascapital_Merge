@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Send Money Request - DashCapital{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <!-- Balance Display -->
+    <div class="balance-display" style="margin-bottom: 2rem;">
+        <h3 style="margin-bottom: 0.5rem;">Your Balance</h3>
+        <div class="balance-amount">৳{{ "%.2f"|format(user.balance) }}</div>
+    </div>
+    
+    <div class="card">
+        <h2 style="margin-bottom: 2rem; color: #333; text-align: center;">Send Money Request</h2>
+        
+        <form method="POST" id="requestForm">
+            <!-- User Search -->
+            <div class="form-group">
+                <label for="userSearch">Search for User</label>
+                <input type="text" id="userSearch" placeholder="Type user's name to search..." 
+                       style="margin-bottom: 0.5rem;">
+                <div id="searchResults" style="display: none; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto;"></div>
+                
+                <!-- Selected User Display -->
+                <div id="selectedUser" style="display: none; background: #e8f4fd; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                    <h4 style="margin: 0; color: #0c5460;">Selected Recipient:</h4>
+                    <p id="selectedUserInfo" style="margin: 0.5rem 0; color: #0c5460;"></p>
+                    <button type="button" onclick="clearSelection()" style="background: none; border: none; color: #dc3545; cursor: pointer; text-decoration: underline;">
+                        Change recipient
+                    </button>
+                </div>
+                
+                <input type="hidden" id="recipient_id" name="recipient_id">
+            </div>
+            
+            <!-- Amount -->
+            <div class="form-group">
+                <label for="amount">Amount (BDT)</label>
+                <input type="number" id="amount" name="amount" step="0.01" min="0.01" required 
+                       placeholder="Enter amount to request">
+            </div>
+            
+            <!-- Note -->
+            <div class="form-group">
+                <label for="note">Note (Optional)</label>
+                <textarea id="note" name="note" rows="3" 
+                          placeholder="Add a note about this request..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;" id="submitBtn" disabled>
+                <span id="submitBtnText">Send Request</span>
+                <span id="submitBtnLoader" style="display: none;">Sending...</span>
+            </button>
+        </form>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('dashboard') }}" style="color: #667eea;">← Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let searchTimeout;
+let selectedRecipient = null;
+
+document.getElementById('userSearch').addEventListener('input', function() {
+    const query = this.value.trim();
+    
+    clearTimeout(searchTimeout);
+    
+    if (query.length < 2) {
+        document.getElementById('searchResults').style.display = 'none';
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetch(`/search_users?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displaySearchResults(data.users);
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+            });
+    }, 300);
+});
+
+function displaySearchResults(users) {
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (users.length === 0) {
+        resultsDiv.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">No users found</div>';
+        resultsDiv.style.display = 'block';
+        return;
+    }
+    
+    const resultsHTML = users.map(user => `
+        <div onclick="selectUser(${user.id}, '${user.name}', '${user.phone_number}', '${user.user_type}')" 
+             style="padding: 1rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.2s;"
+             onmouseover="this.style.backgroundColor='#f8f9fa'" 
+             onmouseout="this.style.backgroundColor='white'">
+            <div style="font-weight: bold; color: #333;">${user.name}</div>
+            <div style="color: #666; font-size: 0.9rem;">${user.phone_number}</div>
+            <div style="color: #28a745; font-size: 0.8rem; text-transform: capitalize;">${user.user_type} User</div>
+        </div>
+    `).join('');
+    
+    resultsDiv.innerHTML = resultsHTML;
+    resultsDiv.style.display = 'block';
+}
+
+function selectUser(id, name, phone, userType) {
+    selectedRecipient = { id, name, phone, userType };
+    
+    document.getElementById('recipient_id').value = id;
+    document.getElementById('selectedUserInfo').textContent = `${name} (${phone})`;
+    document.getElementById('selectedUser').style.display = 'block';
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('userSearch').value = '';
+    
+    updateSubmitButton();
+}
+
+function clearSelection() {
+    selectedRecipient = null;
+    document.getElementById('recipient_id').value = '';
+    document.getElementById('selectedUser').style.display = 'none';
+    document.getElementById('userSearch').value = '';
+    updateSubmitButton();
+}
+
+function updateSubmitButton() {
+    const submitBtn = document.getElementById('submitBtn');
+    const amount = document.getElementById('amount').value;
+    
+    if (selectedRecipient && amount && parseFloat(amount) > 0) {
+        submitBtn.disabled = false;
+    } else {
+        submitBtn.disabled = true;
+    }
+}
+
+document.getElementById('amount').addEventListener('input', updateSubmitButton);
+
+// Handle form submission with AJAX
+document.getElementById('requestForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    if (!selectedRecipient) {
+        showNotification('Please select a recipient', 'error');
+        return;
+    }
+
+    const amount = document.getElementById('amount').value;
+    const note = document.getElementById('note').value;
+
+    if (!amount || parseFloat(amount) <= 0) {
+        showNotification('Please enter a valid amount', 'error');
+        return;
+    }
+
+    // Show loading state
+    const submitBtn = document.getElementById('submitBtn');
+    const submitBtnText = document.getElementById('submitBtnText');
+    const submitBtnLoader = document.getElementById('submitBtnLoader');
+
+    submitBtn.disabled = true;
+    submitBtnText.style.display = 'none';
+    submitBtnLoader.style.display = 'inline';
+
+    // Send request via AJAX
+    fetch('/send_request', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'recipient_id': selectedRecipient.id,
+            'amount': amount,
+            'note': note
+        })
+    })
+    .then(response => response.text())
+    .then(data => {
+        if (data.includes('Money request sent')) {
+            showNotification(`Money request sent to ${selectedRecipient.name} successfully!`, 'success');
+            // Reset form
+            document.getElementById('requestForm').reset();
+            clearSelection();
+            updateBalance();
+        } else {
+            showNotification('Failed to send money request. Please try again.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('An error occurred while sending the request', 'error');
+    })
+    .finally(() => {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtnText.style.display = 'inline';
+        submitBtnLoader.style.display = 'none';
+        updateSubmitButton();
+    });
+});
+
+function updateBalance() {
+    fetch('/dashboard_data')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const balanceElement = document.querySelector('.balance-amount');
+                if (balanceElement) {
+                    balanceElement.textContent = `৳${parseFloat(data.balance).toFixed(2)}`;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error updating balance:', error);
+        });
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'error'}`;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.zIndex = '9999';
+    notification.style.minWidth = '300px';
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+// Hide search results when clicking outside
+document.addEventListener('click', function(event) {
+    const searchContainer = document.getElementById('userSearch').parentElement;
+    if (!searchContainer.contains(event.target)) {
+        document.getElementById('searchResults').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Send Money Internationally - Mobile Banking</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family:playfair display;
+      background: url('https://i.postimg.cc/C1zXvjMF/int.avif') no-repeat center center fixed;
+      background-size: cover;
+    }
+    nav {
+      background-color: #0f2749;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+    }
+    nav img {
+      height: 40px;
+      cursor: pointer;
+    }
+    .form-container {
+      background-color: #0f2749;
+      color: #aac5ea;
+      width: 300px;
+      margin: 60px auto;
+      padding: 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    .form-container h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #aac5ea;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+    }
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .button-group button {
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      background-color: #aac5ea;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .button-group button:hover {
+      background-color: #ddd;
+    }
+    .back-button {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .back-button button {
+      padding: 8px 20px;
+      background-color: #cc0000;
+      border: none;
+      border-radius: 4px;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .error-message {
+      color: #ff4444;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+
+    .success-message {
+      color: #4CAF50;
+      background-color: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+  </nav>
+
+  <!-- Main Form -->
+  <div class="form-container">
+    <h2>Send Money Internationally</h2>
+
+    <div id="error-container" class="error-message" style="display: none;"></div>
+    <div id="success-container" class="success-message" style="display: none;"></div>
+
+    <form id="internationalMoneyForm">
+
+
+      <div class="form-group">
+        <label for="receiversName">Recipient's Name</label>
+        <input type="text" id="receiversName" name="receiversName" placeholder="Enter recipient's name" required>
+      </div>
+
+	      <div class="form-group">
+	        <label for="recipientPhone">Recipient Phone (in-app)</label>
+	        <input type="text" id="recipientPhone" name="recipientPhone" placeholder="Enter recipient's phone" required>
+	      </div>
+      <!-- Autocomplete Suggestions -->
+      <div id="intlSuggestions" style="display:none; background:#fff; color:#000; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.2); position:absolute; width:300px; z-index:1000;"></div>
+
+
+      <div class="form-group">
+        <label for="country">Country</label>
+        <select id="country" name="country" required>
+          <option value="">Select Country</option>
+          <option value="Australia">Australia</option>
+          <option value="Canada">Canada</option>
+          <option value="China">China</option>
+          <option value="France">France</option>
+          <option value="Germany">Germany</option>
+          <option value="Saudi Arabia">Saudi Arabia</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="amount">Amount in BDT</label>
+        <input type="number" id="amount" name="amount" placeholder="Enter amount in BDT" min="1" step="0.01" required>
+      </div>
+
+      <div class="form-group">
+        <input type="checkbox" id="save_info" name="save_info"> <label for="save_info">Save recipient for future transfers</label>
+      </div>
+
+      <div class="button-group">
+        <button type="button" onclick="submitTransaction()">Send Money</button>
+      </div>
+    </form>
+
+    <div class="back-button">
+      <button onclick="window.location.href='{{ url_for('money.send_money_choice') }}'">Back</button>
+    </div>
+  </div>
+
+  <script>
+    function goHome() {
+      window.location.href = "/dashboard";
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+
+    function showError(message) {
+      const errorContainer = document.getElementById('error-container');
+      errorContainer.textContent = message;
+      errorContainer.style.display = 'block';
+
+      const successContainer = document.getElementById('success-container');
+      successContainer.style.display = 'none';
+    }
+
+    function showSuccess(message) {
+      const successContainer = document.getElementById('success-container');
+      successContainer.textContent = message;
+      successContainer.style.display = 'block';
+
+      const errorContainer = document.getElementById('error-container');
+      errorContainer.style.display = 'none';
+    }
+
+    function validateForm() {
+      const receiversName = document.getElementById('receiversName').value.trim();
+      const recipientPhone = document.getElementById('recipientPhone').value.trim();
+      const country = document.getElementById('country').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+
+      if (!recipientPhone) {
+        showError('Please enter recipient phone');
+        return false;
+      }
+
+      if (!receiversName) {
+        showError('Please enter recipient\'s name');
+        return false;
+      }
+
+      if (!country) {
+        showError('Please select a country');
+        return false;
+      }
+
+      if (isNaN(amount) || amount <= 0) {
+        showError('Please enter a valid amount');
+        return false;
+      }
+
+      return true;
+    }
+
+    function submitTransaction() {
+      if (!validateForm()) {
+        return;
+      }
+
+      const formData = {
+        receivers_name: document.getElementById('receiversName').value.trim(),
+        recipient_phone: document.getElementById('recipientPhone').value.trim(),
+        country: document.getElementById('country').value,
+        amount: parseFloat(document.getElementById('amount').value),
+        save: document.getElementById('save_info').checked
+      };
+
+      // Show loading message
+      showSuccess('Processing your request...');
+
+      fetch('/submit_transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          window.location.href = '/int_money_confirm_transaction';
+        } else {
+
+
+          showError(data.message || 'Something went wrong. Please try again.');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showError('Network error. Please try again later.');
+      });
+    }
+
+  <!-- Recipient autocomplete for international send (after main script) -->
+  <script>
+    (function(){
+      const phoneInput = document.getElementById('recipientPhone');
+      const sugg = document.getElementById('intlSuggestions');
+      function positionBox(){
+        const rect = phoneInput.getBoundingClientRect();
+        sugg.style.left = (rect.left + window.scrollX) + 'px';
+        sugg.style.top = (rect.bottom + window.scrollY) + 'px';
+      }
+      function render(list){
+        if (!list || list.length === 0){
+          sugg.innerHTML = '<div style="padding:8px 10px;">No matches</div>';
+          sugg.style.display = 'block';
+          return;
+        }
+        sugg.innerHTML = '';
+        list.forEach(u => {
+          const item = document.createElement('div');
+          item.style.padding = '8px 10px';
+          item.style.cursor = 'pointer';
+          item.onmouseenter = ()=> item.style.background = '#f2f2f2';
+          item.onmouseleave = ()=> item.style.background = 'transparent';
+          item.textContent = `${u.name} (${u.phone})`;
+          item.addEventListener('click', ()=>{ phoneInput.value = u.phone; sugg.style.display='none'; });
+          sugg.appendChild(item);
+        });
+        sugg.style.display = 'block';
+      }
+      async function search(q){
+        if (!q || q.trim().length < 1){ sugg.style.display='none'; return; }
+        try{
+          const res = await fetch(`/search_users?q=${encodeURIComponent(q)}`);
+          const data = await res.json();
+          if (!data.success) { sugg.style.display='none'; return; }
+          positionBox();
+          render(data.users);
+        }catch(e){ sugg.style.display='none'; }
+      }
+      phoneInput.addEventListener('input', ()=> search(phoneInput.value));
+      document.addEventListener('click', (e)=>{ if (!sugg.contains(e.target) && e.target !== phoneInput) sugg.style.display='none'; });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+/* Base styles for clean, responsive pages */
+:root {
+  --bg: #f5f7fb;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --primary: #0f2749;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Playfair Display", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.navbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; background: var(--primary); color: #fff;
+}
+.navbar .title { font-weight: 700; letter-spacing: 0.2px; }
+.navbar .nav-actions { display:flex; gap: 8px; }
+.navbar a, .navbar button { background: transparent; border: none; color: #fff; cursor: pointer; font-weight: 600; }
+
+.container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+.card-body { padding: 16px; }
+.card h2 { margin: 0 0 8px 0; color: var(--primary); font-size: 20px; }
+
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 14px; border-radius:8px; border: 1px solid var(--border); background:#fff; color: var(--text); cursor:pointer; text-decoration:none; font-weight:600; }
+.btn.primary { background: #3e75c2; color: #fff; border-color: #3e75c2; }
+.btn.danger { background: #e74c3c; color: #fff; border-color: #e74c3c; }
+.btn:hover { filter: brightness(0.98); }
+
+.list { display:flex; flex-direction:column; }
+.list-item { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:12px 0; border-bottom: 1px solid var(--border); }
+.list-item:last-child { border-bottom: none; }
+.list-title { font-weight:700; color: var(--primary); }
+.list-sub { color: var(--muted); font-size: 13px; }
+
+.empty { text-align:center; color: var(--muted); padding: 16px 0; }
+
+@media (max-width: 640px) {
+  .list-item { flex-direction: column; align-items: flex-start; }
+}
+
+
+
+/* Shared logo button (top-left) */
+.logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+
+/* Shared back button at bottom center */
+.back-button-container { position: fixed; left: 0; right: 0; bottom: 18px; display: flex; justify-content: center; z-index: 1000; }
+.back-button { background-color: #ff4444; color: white; border: none; border-radius: 25px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); transition: background-color 0.3s; }
+.back-button:hover { background-color: #cc0000; }

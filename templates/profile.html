@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile</title>
+  <style>
+    * { box-sizing: border-box; font-family: playfair display; }
+    body { margin: 0; background: #f8fafc; color: #111827; }
+    .navbar { display:flex; justify-content:space-between; align-items:center; padding:15px 20px; background:#0f2749; }
+    .logo-btn { width:120px; height:40px; background-color:transparent; border:none; cursor:pointer; background-image:url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size:contain; background-repeat:no-repeat; background-position:center; }
+
+    .container { max-width: 1000px; margin: 18px auto; padding: 0 16px; }
+
+    .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+    .card { background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.06); }
+    .card h2 { color:#111827; margin-top:0; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display:block; margin-bottom:6px; color:#374151; font-weight:700; }
+    .form-group input { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; color:#111827; }
+
+    .btn { padding: 10px 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: 800; }
+    .btn-primary { background: #0f2749; color: #fff; }
+
+    .flash { color:#991b1b; background:#fee2e2; border:1px solid #fecaca; padding:10px; border-radius:8px; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+  </nav>
+
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="grid">
+      <!-- Left: Profile Info -->
+      <div class="card">
+        <h2>Your Details</h2>
+        <form method="POST" action="{{ url_for('profile.update_profile') }}">
+          <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input id="first_name" name="first_name" value="{{ user.first_name }}" required />
+          </div>
+          <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input id="last_name" name="last_name" value="{{ user.last_name }}" required />
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" value="{{ user.email }}" required />
+          </div>
+          <div class="form-group">
+            <label for="phone">Phone</label>
+            <input id="phone" name="phone" value="{{ user.phone }}" required />
+          </div>
+          <div class="form-group">
+            <label for="nid">NID</label>
+            <input id="nid" name="nid" value="{{ user.nid }}" required />
+          </div>
+          <div class="form-group">
+            <label for="dob">Date of Birth</label>
+            <input id="dob" name="dob" type="date" value="{{ user.dob }}" required />
+          </div>
+          <button class="btn btn-primary" type="submit">Save Changes</button>
+        </form>
+      </div>
+
+      <!-- Right: Security -->
+      <div class="card">
+        <h2>Security</h2>
+        <form method="POST" action="{{ url_for('profile.change_pin') }}">
+          <div class="form-group">
+            <label for="current_pin">Current PIN</label>
+            <input id="current_pin" name="current_pin" type="password" required />
+          </div>
+          <div class="form-group">
+            <label for="new_pin">New PIN</label>
+            <input id="new_pin" name="new_pin" type="password" required />
+          </div>
+          <div class="form-group">
+            <label for="confirm_pin">Confirm New PIN</label>
+            <input id="confirm_pin" name="confirm_pin" type="password" required />
+          </div>
+          <button class="btn btn-primary" type="submit">Update PIN</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+  <!-- Standard bottom-centered back button -->
+  <div class="back-button-container">
+    <button class="back-button" onclick="history.back()">Back</button>
+  </div>
+</body>
+</html>
+

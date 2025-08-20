@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Favourite Accounts</title>
+  <style>
+    body { margin: 0; font-family: playfair display; background-color: #0f1c2e; color: #aac5ea; }
+    .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #0f2749; }
+    .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+    .container { max-width: 900px; margin: 20px auto; padding: 0 16px; }
+    h1 { margin: 10px 0 20px; color: #fff; text-align: center; }
+
+    .payee-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .card { background-color: #0f2749; border-radius: 10px; padding: 16px; box-shadow: 0 0 8px rgba(0,0,0,0.5); }
+    .name { color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 4px; }
+    .phone { color: #aac5ea; font-size: 14px; margin-bottom: 10px; }
+    .actions { display: flex; gap: 8px; }
+    .btn { flex: 1; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; }
+    .btn-send { background-color: #3e75c2; color: #fff; }
+    .btn-delete { background-color: #c23e3e; color: #fff; }
+    .empty { text-align: center; color: #aac5ea; padding: 30px 0; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+  </nav>
+
+  <div class="container">
+    <h1>Favourite Accounts</h1>
+
+    {% if payees and payees|length > 0 %}
+    <div class="payee-list">
+      {% for p in payees %}
+      <div class="card">
+        <div class="name">{{ p.recipient_name }}</div>
+        <div class="phone">{{ p.recipient_phone }}</div>
+        <div class="actions">
+          <button class="btn btn-send" onclick="prefillAndGo('{{ p.recipient_phone }}', '{{ p.recipient_name }}')">Send</button>
+          <form method="POST" style="margin:0;">
+            <input type="hidden" name="delete_id" value="{{ p.id }}" />
+            <button type="submit" class="btn btn-delete">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">No favourite accounts yet. Save a recipient when sending money to see them here.</div>
+    {% endif %}
+  </div>
+
+  <script>
+    function prefillAndGo(phone, name) {
+      const url = '/send_money/local?phone=' + encodeURIComponent(phone) + '&name=' + encodeURIComponent(name);
+      window.location.href = url;
+    }
+  </script>
+  <div class="back-button-container">
+    <button class="back-button" onclick="history.back()">Back</button>
+  </div>
+</body>
+</html>
+

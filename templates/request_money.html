@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Request Money</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .form { max-width: 480px; margin: 24px auto; }
+    .form .row { margin-bottom: 12px; }
+    .form label { display:block; font-weight:600; margin-bottom:6px; color:#374151; }
+    .form input, .form textarea { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; }
+    .sugg { display:none; position:absolute; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.08); width:100%; z-index:1000; }
+    .sugg-item { padding:8px 10px; cursor:pointer; }
+    .sugg-item:hover { background:#f3f4f6; }
+    .pos-wrap { position:relative; }
+    /* Ensure logo visibility */
+    .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+    <div class="title">Request Money</div>
+    <div class="nav-actions"></div>
+  </nav>
+  <div class="container">
+    <div class="card"><div class="card-body">
+      <form class="form" method="POST" action="{{ url_for('requests.request_money_submit') }}">
+        <div class="row pos-wrap">
+          <label for="recipient_phone">Recipient Phone</label>
+          <input id="recipient_phone" name="recipient_phone" placeholder="Search name or phone" required />
+          <div id="sugg" class="sugg"></div>
+        </div>
+        <div class="row">
+          <label for="amount">Amount</label>
+          <input id="amount" name="amount" type="number" min="1" step="0.01" required />
+        </div>
+        <div class="row">
+          <label for="note">Note (optional)</label>
+          <textarea id="note" name="note" rows="3"></textarea>
+        </div>
+        <button class="btn primary" type="submit">Send Request</button>
+      </form>
+    </div></div>
+  </div>
+
+  <script>
+    (function(){
+      const input = document.getElementById('recipient_phone');
+      const box = document.getElementById('sugg');
+      function render(list){
+        if(!list||list.length===0){ box.innerHTML = '<div class="sugg-item">No matches</div>'; box.style.display='block'; return; }
+        box.innerHTML = '';
+        list.forEach(u=>{
+          const div=document.createElement('div'); div.className='sugg-item';
+          div.textContent = `${u.name} (${u.phone})`;
+          div.onclick = ()=>{ input.value = u.phone; box.style.display='none'; };
+          box.appendChild(div);
+        });
+        box.style.display='block';
+      }
+      async function search(q){
+        if(!q||q.trim().length<1){ box.style.display='none'; return; }
+        const res = await fetch(`/search_users?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if(!data.success){ box.style.display='none'; return; }
+        render(data.users);
+      }
+      input.addEventListener('input', ()=> search(input.value));
+      document.addEventListener('click', (e)=>{ if(!box.contains(e.target) && e.target!==input) box.style.display='none'; });
+    })();
+  </script>
+  <div class="back-button-container">
+    <button class="back-button" onclick="location.href='{{ url_for('dashboard.dashboard') }}'">Back</button>
+  </div>
+</body>
+</html>

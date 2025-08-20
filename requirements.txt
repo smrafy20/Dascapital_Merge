@@ -1,0 +1,6 @@
+Flask
+Flask-SQLAlchemy
+Werkzeug
+SQLAlchemy
+pymysql
+mysql-connector-python

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mobile Banking Home</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: playfair display;
+    }
+
+    body {
+      background-image: url('https://i.postimg.cc/k4zVhP2t/MB-Home.png');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-color: #f5f5f5;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 25px;
+      background-color: #0f2749;
+    }
+
+	    /* center welcome area */
+	    .nav-center {
+	      position: absolute;
+	      left: 50%;
+	      top: 50%;
+	      transform: translate(-50%, -50%);
+	      text-align: center;
+	      pointer-events: none; /* do not block clicks on right buttons */
+	    }
+	    .nav-center .welcome-text {
+	      color: #fff;
+	      font-weight: 700;
+	      font-size: 18px;
+	      line-height: 1.2;
+	      text-shadow: 0 0 6px rgba(0,0,0,0.3);
+	    }
+	    .nav-center .balance-text {
+	      color: #aac5ea;
+	      font-weight: 600;
+	      font-size: 14px;
+	      margin-top: 2px;
+	    }
+
+    .logo-btn {
+      width: 100px;
+      height: 40px;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+      background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .nav-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-right button {
+      padding: 6px 10px;
+      font-size: 12px;
+      border: none;
+      border-radius: 5px;
+      background-color: #aac5ea;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .main-content {
+      padding: 20px;
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 100px);
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-top: 10px;
+      flex-grow: 1;
+    }
+
+    .menu-button {
+      background-color: rgba(255, 255, 255, 0.9);
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 15px;
+      font-size: 14px;
+      font-weight: bold;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 8px #0f2749;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100px;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+    }
+
+    .menu-button::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #3e75c2;
+      background-size: contain;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0.2;
+      z-index: 0;
+    }
+
+    .menu-button span {
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+    }
+
+    .menu-button:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .faq-button {
+      position: fixed;
+      bottom: 15px;
+      right: 15px;
+      padding: 8px 12px;
+      background-color: #aac5ea;
+      color: black;
+      font-weight: bold;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px #0f2749;
+    }
+
+    </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+  <nav class="navbar" style="position: relative;">
+    <button class="logo-btn" id="logoBtn"></button>
+
+
+
+    <div class="nav-right">
+      <div class="notif-container">
+        <button id="notificationBtn" class="notif-bell" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6V11a6 6 0 1 0-12 0v5l-2 2v1h16v-1l-2-2z"/>
+          </svg>
+          <span id="notifBadge" class="notif-badge">0</span>
+        </button>
+        <div id="notifDropdown" class="notif-dropdown">
+          <div id="notifItems"></div>
+          <div class="notif-footer"><a href="{{ url_for('notifications.notifications_page') }}">See all</a></div>
+        </div>
+      </div>
+      <button id="profileBtn" onclick="window.location.href='{{ url_for('profile.profile') }}'">Profile</button>
+      <button id="favBtn" onclick="window.location.href='{{ url_for('payees.favourite_accounts') }}'">Favourite Accounts</button>
+      <button id="historyBtn">History</button>
+      <button id="logoutBtn">Log out</button>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <!-- Balance card -->
+    <div class="cards-row" style="grid-template-columns: 1fr;">
+      <div class="balance-card" style="max-width:520px; margin: 0 auto; width:100%;">
+        <div class="balance-card-header">
+          <div class="greeting">Welcome back, {{ name or 'User' }}!</div>
+        </div>
+        <div class="balance-amount"><span class="currency">৳</span>{{ '%.2f' % (balance or 0) }}</div>
+        <div class="balance-sub">Current Balance</div>
+      </div>
+    </div>
+
+    <div class="button-grid" style="margin-top:16px;">
+      <a href="/send_money" class="menu-button">
+        <div class="menu-icon">⇄</div>
+        <div class="menu-title">Send Money</div>
+        <div class="menu-desc">Transfer funds quickly</div>
+      </a>
+      <a href="/add_money" class="menu-button">
+        <div class="menu-icon">＋</div>
+        <div class="menu-title">Add Money</div>
+        <div class="menu-desc">Top up via bank/card</div>
+      </a>
+      <a href="/request_money" class="menu-button">
+        <div class="menu-icon">↻</div>
+        <div class="menu-title">Request Money</div>
+        <div class="menu-desc">Ask a user to pay</div>
+      </a>
+      <a href="/split_bill" class="menu-button">
+        <div class="menu-icon">🧩</div>
+        <div class="menu-title">Split Bill</div>
+        <div class="menu-desc">Share a bill with friends</div>
+      </a>
+      <a href="/split_shares" class="menu-button">
+        <div class="menu-icon">🧾</div>
+        <div class="menu-title">My Split Shares</div>
+        <div class="menu-desc">Pay or reject your shares</div>
+      </a>
+    </div>
+  </div>
+
+  <button class="faq-button" id="faqBtn">FAQ</button>
+  <button class="faq-button" id="contactBtn" style="right: 90px;">Contact Us</button> <!-- NEW -->
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('logoBtn').onclick = () => location.reload();
+      document.getElementById('profileBtn').onclick = () => window.location.href = "/profile";
+      document.getElementById('favBtn').onclick = () => window.location.href = "/favourite_accounts";
+      document.getElementById('historyBtn').onclick = () => window.location.href = "/statements";
+      document.getElementById('logoutBtn').onclick = () => window.location.href = "/logout";
+      document.getElementById('faqBtn').onclick = () => window.location.href = "/faq";
+      document.getElementById('contactBtn').onclick = () => window.location.href = "/user_messages";    // NEW
+
+
+    window.toggleNotifications = async function(e) {
+      e.stopPropagation();
+      const open = notifDropdown.style.display === 'block';
+      notifDropdown.style.display = open ? 'none' : 'block';
+      if (!open) {
+        await fetchLatestNotifications();
+        await markLatestAsRead();
+      }
+    }
+
+    // Notifications dropdown
+    const notifBtn = document.getElementById('notificationBtn');
+    const notifDropdown = document.getElementById('notifDropdown');
+    const notifItems = document.getElementById('notifItems');
+    const badge = document.getElementById('notifBadge');
+
+    async function fetchLatestNotifications() {
+      try {
+        const res = await fetch('/notifications/api/latest');
+        const data = await res.json();
+        notifItems.innerHTML = '';
+        if (!data.success || !data.notifications || data.notifications.length === 0) {
+          notifItems.innerHTML = '<div class="notif-item">No new notifications</div>';
+          return;
+        }
+        data.notifications.forEach(n => {
+          const el = document.createElement('div');
+          el.className = 'notif-item';
+          el.setAttribute('data-url', n.url || '');
+          el.style.cursor = n.url ? 'pointer' : 'default';
+          el.innerHTML = `<div class="notif-title">${n.title}</div>
+                          <div class="notif-message">${n.message}</div>
+                          <div class="notif-meta">${n.created_at}</div>`;
+          notifItems.appendChild(el);
+        });
+      } catch (e) {
+        notifItems.innerHTML = '<div class="notif-item">Could not load notifications</div>';
+      }
+    }
+
+    async function refreshUnreadBadge() {
+      try {
+        const res = await fetch('/notifications/api/unread_count');
+        const data = await res.json();
+        if (!data.success || !badge) return;
+        const count = data.count || 0;
+        if (count > 0) {
+          badge.textContent = count > 9 ? '9+' : String(count);
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    async function markLatestAsRead() {
+      try {
+        await fetch('/notifications/api/mark_read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mark_all: true })
+        });
+        await refreshUnreadBadge();
+      } catch (e) { /* ignore */ }
+    }
+
+    // Toggle dropdown, load latest, mark as read
+    notifBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const open = notifDropdown.style.display === 'block';
+      if (open) {
+        notifDropdown.style.display = 'none';
+        return;
+      }
+      notifDropdown.style.display = 'block';
+      await fetchLatestNotifications();
+      await markLatestAsRead();
+    });
+
+    // Clicking an item with URL navigates
+    notifItems.addEventListener('click', (e) => {
+      const item = e.target.closest('.notif-item');
+      if (!item) return;
+      const url = item.getAttribute('data-url');
+      if (url) window.location.href = url;
+    });
+
+    // Balance eye toggle
+    (function(){
+      const btn = document.getElementById('toggleEye');
+      const val = document.getElementById('balVal');
+      if (!btn || !val) return;
+      const actual = val.textContent;
+      let hidden = false;
+      btn.addEventListener('click', () => {
+        hidden = !hidden;
+        btn.textContent = hidden ? 'Show' : 'Hide';
+        val.textContent = hidden ? '••••••' : actual;
+      });
+    })();
+
+    // Close when clicking outside
+    document.addEventListener('click', (evt) => {
+      const within = notifDropdown.contains(evt.target) || evt.target.id === 'notificationBtn';
+      if (!within) notifDropdown.style.display = 'none';
+    });
+
+    // Initial unread badge
+    refreshUnreadBadge();
+    setInterval(refreshUnreadBadge, 30000);
+    });
+  </script>
+</body>
+</html>

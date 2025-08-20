@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="80" viewBox="0 0 240 80" role="img" aria-label="Home">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3e75c2"/>
+      <stop offset="100%" stop-color="#0f2749"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="240" height="80" rx="12" fill="url(#g)"/>
+  <g fill="#ffffff" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-weight="800">
+    <text x="70" y="50" font-size="26">DashCapital</text>
+  </g>
+  <g>
+    <circle cx="36" cy="40" r="22" fill="#ffffff" opacity="0.15"/>
+    <path d="M26 46 L26 34 a10 10 0 0 1 20 0 v12" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="36" cy="52" r="2" fill="#ffffff"/>
+  </g>
+</svg>
+

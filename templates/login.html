@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mobile Banking Login</title>
+    <style>
+        /* Your existing styles */
+        body {
+            font-family: playfair display;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .image-section {
+            flex: 1;
+            background-image: url('https://i.postimg.cc/zvxwcVG6/Chat-GPT-Image-Apr-6-2025-01-23-44-AM.png');
+            background-size: cover;
+            background-position: center;
+        }
+        .login-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        .welcome-text {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #2c3e50;
+        }
+        .input-group {
+            margin-bottom: 25px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        .login-button:hover {
+            background-color: #1a252f;
+        }
+        .back-button {
+            background-color: #ccc;
+            color: #2c3e50;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            padding: 14px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .signup-link {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .signup-link a {
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+        .forgot-link { text-align:center; margin-top:12px; }
+        .forgot-link a { color:#2c3e50; font-weight:700; cursor:pointer; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+        .dialog { background:#fff; width: 100%; max-width: 420px; border-radius: 10px; padding: 18px; box-shadow: 0 12px 36px rgba(0,0,0,0.2); }
+        .dialog h3 { margin: 0 0 10px; }
+        .row { margin-bottom: 10px; }
+        .row label { display:block; font-weight:700; margin-bottom:6px; color:#374151; }
+        .row input { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; }
+        .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+        .btn { padding:10px 12px; border:none; border-radius:8px; cursor:pointer; font-weight:800; }
+        .btn.primary { background:#2c3e50; color:#fff; }
+        .btn.ghost { background:#f3f4f6; }
+        .msg { color:#b91c1c; font-size: 12px; min-height: 16px; margin-top: 4px; }
+        .toast { position: fixed; right: 20px; bottom: 20px; background: #065f46; color: #ecfdf5; padding: 12px 14px; border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,0.2); font-weight: 800; display:none; }
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .image-section { height: 200px; flex: none; }
+            .login-section { flex: none; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="image-section"></div>
+
+    <div class="login-section">
+        <div class="login-container">
+            <div class="welcome-text">Welcome Back</div>
+
+            {% if error %}
+                <div class="error-message">{{ error }}</div>
+            {% endif %}
+
+            <form action="{{ url_for('auth.login') }}" method="POST">
+                <div class="input-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="text" name="phone" id="phone" placeholder="Enter your phone number" maxlength="11" required pattern="01[0-9]{9}" />
+                </div>
+
+                <div class="input-group">
+                    <label for="pin">PIN</label>
+                    <input type="password" name="pin" id="pin" placeholder="Enter your PIN" required />
+                </div>
+
+                <button type="submit" class="login-button">Log In</button>
+            </form>
+
+            <div class="forgot-link">
+              <a onclick="openForgot()">Forgot PIN?</a>
+            </div>
+
+            <div class="signup-link">
+                Don’t have an account? <a href="{{ url_for('auth.signup') }}">Sign up here</a>
+            </div>
+
+            <a href="url_for('dashboard.dashboard')" class="back-button">Back</a>
+        </div>
+    </div>
+
+    <!-- Forgot PIN Modal -->
+    <div id="forgotModal" class="modal">
+      <div class="dialog">
+        <h3>Reset PIN</h3>
+        <div id="stepVerify">
+          <div class="row">
+            <label for="fp_phone">Phone</label>
+            <input id="fp_phone" placeholder="01XXXXXXXXX" maxlength="11" />
+          </div>
+          <div class="row">
+            <label for="fp_nid">NID</label>
+            <input id="fp_nid" placeholder="Enter your NID" />
+          </div>
+          <div class="actions">
+            <button class="btn ghost" onclick="closeForgot()">Cancel</button>
+            <button class="btn primary" onclick="verifyIdentity()">Verify</button>
+          </div>
+          <div class="msg" id="verifyMsg"></div>
+        </div>
+
+        <div id="stepReset" style="display:none;">
+          <div class="row">
+            <label for="fp_new">New PIN</label>
+            <input id="fp_new" type="password" />
+          </div>
+          <div class="row">
+            <label for="fp_confirm">Confirm PIN</label>
+            <input id="fp_confirm" type="password" />
+          </div>
+          <div class="actions">
+            <button class="btn ghost" onclick="closeForgot()">Cancel</button>
+            <button class="btn primary" onclick="resetPin()">Update PIN</button>
+          </div>
+          <div class="msg" id="resetMsg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast">PIN updated successfully. You can log in now.</div>
+
+    <script>
+      function openForgot(){ document.getElementById('forgotModal').style.display='flex'; }
+      function closeForgot(){ document.getElementById('forgotModal').style.display='none'; document.getElementById('verifyMsg').textContent=''; document.getElementById('resetMsg').textContent=''; }
+      function showToast(msg){ const t=document.getElementById('toast'); t.textContent = msg; t.style.display='block'; setTimeout(()=>{ t.style.display='none'; }, 2200); }
+      async function verifyIdentity(){
+        const phone = document.getElementById('fp_phone').value.trim();
+        const nid = document.getElementById('fp_nid').value.trim();
+        const res = await fetch('/forgot_pin/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, nid })});
+        const data = await res.json();
+        const msg = document.getElementById('verifyMsg');
+        if(!data.success){ msg.textContent = data.message || 'Verification failed'; return; }
+        document.getElementById('stepVerify').style.display='none';
+        document.getElementById('stepReset').style.display='block';
+      }
+      async function resetPin(){
+        const new_pin = document.getElementById('fp_new').value.trim();
+        const confirm_pin = document.getElementById('fp_confirm').value.trim();
+        const res = await fetch('/forgot_pin/reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ new_pin, confirm_pin })});
+        const data = await res.json();
+        const msg = document.getElementById('resetMsg');
+        if(!data.success){ msg.textContent = data.message || 'Could not update PIN'; return; }
+        msg.style.color = '#065f46';
+        msg.textContent = 'PIN updated successfully. You can log in now.';
+        showToast('PIN updated successfully. You can log in now.');
+        setTimeout(()=>{ closeForgot(); }, 1200);
+      }
+    </script>
+</body>
+</html>

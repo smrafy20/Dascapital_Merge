@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pending Money Request</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .info { display:grid; grid-template-columns: 120px 1fr; row-gap: 8px; column-gap: 12px; }
+    .label { color:#6b7280; font-weight:600; }
+    .value { color:#111827; font-weight:600; }
+    .actions { display:flex; gap: 8px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+    <div class="title">Money Request</div>
+    <div class="nav-actions"></div>
+  </nav>
+  <div class="container">
+    <div class="card"><div class="card-body">
+      {% if req %}
+        <h2>Pending Request</h2>
+        <div class="info">
+          <div class="label">From</div><div class="value">{{ sender.full_name }} ({{ sender.phone }})</div>
+          <div class="label">To</div><div class="value">{{ recipient.full_name }} ({{ recipient.phone }})</div>
+          <div class="label">Amount</div><div class="value">৳{{ '%.2f' % req.amount }}</div>
+          <div class="label">Note</div><div class="value">{{ req.note or '-' }}</div>
+          <div class="label">Status</div><div class="value">{{ req.status }}</div>
+        </div>
+        {% if req.status == 'pending' and recipient.id == current_user_id %}
+          <div class="actions">
+            <button class="btn primary" onclick="processReq({{ req.id }}, 'accept')">Approve</button>
+            <button class="btn" onclick="processReq({{ req.id }}, 'reject')">Decline</button>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="empty">Request not found</div>
+      {% endif %}
+      <div class="back-button-container">
+        <button class="back-button" onclick="window.location.href='{{ url_for('requests.requests_overview') }}'">Back</button>
+      </div>
+    </div></div>
+  </div>
+  <script>
+    async function processReq(id, action){
+      try{
+        const res = await fetch('/requests/api/process', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, action})});
+        const data = await res.json();
+        if(!data.success){ alert(data.message || 'Failed'); return; }
+        window.location.href = '{{ url_for('requests.requests_overview') }}';
+      }catch(e){ alert('Failed'); }
+    }
+  </script>
+</body>
+</html>
+

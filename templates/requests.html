@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Money Requests</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 800px){ .grid { grid-template-columns: 1fr; } }
+    .item-head { font-weight:700; color:#0f2749; }
+    .sub { color:#6b7280; font-size:13px; }
+    .actions { display:flex; gap:8px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar"><div class="title">Money Requests</div><div class="nav-actions"><button class="btn" onclick="location.href='{{ url_for('dashboard.dashboard') }}'">Back</button></div></nav>
+  <div class="container">
+    <div class="grid">
+      <div class="card"><div class="card-body">
+        <h2>Incoming</h2>
+        <div class="list" id="incomingList">
+          {% if incoming %}
+            {% for r in incoming %}
+            <div class="list-item">
+              <div>
+                <div class="item-head">
+                  From {{ users_by_id.get(r.sender_id).full_name if users_by_id.get(r.sender_id) else ('User #' ~ r.sender_id) }}
+                  ({{ users_by_id.get(r.sender_id).phone if users_by_id.get(r.sender_id) else '' }})
+                </div>
+                <div class="sub">৳{{ '%.2f' % r.amount }} • {{ r.status }} • {{ r.created_at }}</div>
+              </div>
+              <div class="actions">
+                {% if r.status == 'pending' %}
+                  <button class="btn primary" onclick="processReq({{ r.id }}, 'accept')">Accept</button>
+                  <button class="btn" onclick="processReq({{ r.id }}, 'reject')">Reject</button>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">No incoming requests</div>
+          {% endif %}
+        </div>
+      </div></div>
+
+      <div class="card"><div class="card-body">
+        <h2>Outgoing</h2>
+        <div class="list">
+          {% if outgoing %}
+            {% for r in outgoing %}
+            <div class="list-item">
+              <div>
+                <div class="item-head">
+                  To {{ users_by_id.get(r.recipient_id).full_name if users_by_id.get(r.recipient_id) else ('User #' ~ r.recipient_id) }}
+                  ({{ users_by_id.get(r.recipient_id).phone if users_by_id.get(r.recipient_id) else '' }})
+                </div>
+                <div class="sub">৳{{ '%.2f' % r.amount }} • {{ r.status }} • {{ r.created_at }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">No outgoing requests</div>
+          {% endif %}
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <script>
+    async function processReq(id, action){
+      try{
+        const res = await fetch('/requests/api/process', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, action})});
+        const data = await res.json();
+        if(!data.success){ alert(data.message || 'Failed'); return; }
+        location.reload();
+      }catch(e){ alert('Failed'); }
+    }
+  </script>
+</body>
+</html>
+

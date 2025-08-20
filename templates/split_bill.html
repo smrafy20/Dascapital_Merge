@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Split Bill</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <style>
+    .page { max-width: 880px; margin: 18px auto; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 760px){ .grid2 { grid-template-columns: 1fr; } }
+    .form .row { margin-bottom: 12px; }
+    .form label { display:block; font-weight:600; margin-bottom:6px; color:#374151; }
+    .form input, .form textarea, .form select { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:#eef2ff; border:1px solid #e5e7eb; border-radius:999px; }
+    .pill .x { cursor:pointer; color:#6b7280; }
+    .sugg { display:none; border:1px solid #e5e7eb; border-radius:8px; background:#fff; box-shadow:0 8px 20px rgba(0,0,0,0.06); max-height:220px; overflow:auto; margin-top:6px; }
+    .sugg-item { padding:10px 12px; cursor:pointer; }
+    .sugg-item:hover { background:#f3f4f6; }
+    /* Ensure logo visibility */
+    .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
+    <div class="title">Split Bill</div>
+    <div class="nav-actions"></div>
+  </nav>
+  <div class="container page">
+    <div class="card"><div class="card-body">
+      <form id="splitForm" class="form" method="POST" action="{{ url_for('split.split_bill_page') }}">
+        <div class="grid2">
+          <div>
+            <div class="row"><label for="title">Title</label><input id="title" name="title" placeholder="e.g., Dinner at Cafe 27" required /></div>
+            <div class="row"><label for="total_amount">Total Amount (BDT)</label><input type="number" id="total_amount" name="total_amount" step="0.01" min="0.01" required /></div>
+            <div class="row"><label for="note">Note (optional)</label><textarea id="note" name="note" rows="3"></textarea></div>
+            <div class="row"><label for="destination_phone">Destination (Receiver) Phone</label><input id="destination_phone" name="destination_phone" placeholder="e.g., 017XXXXXXX" required /></div>
+          </div>
+          <div>
+            <div class="row"><label>Search and add participants</label>
+              <input id="userSearch" placeholder="Type a name or phone" />
+              <div id="sugg" class="sugg"></div>
+              <div id="selected" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px"></div>
+              <input type="hidden" id="participants" name="participants" />
+            </div>
+            <div class="row"><label for="split_mode">Split Mode</label>
+              <select id="split_mode" name="split_mode">
+                <option value="equal" selected>Equal Split</option>
+                <option value="custom">Custom Split</option>
+              </select>
+            </div>
+            <div id="sharesWrap" class="row" style="display:none"></div>
+            <input type="hidden" id="shares" name="shares" />
+            <div id="totals" class="row" style="display:none; color:#6b7280"></div>
+          </div>
+        </div>
+        <button class="btn primary" id="submitBtn" type="submit" style="margin-top:8px">Create Split Bill</button>
+      </form>
+    </div></div>
+  </div>
+
+  <script>
+    // Suggestions
+    const input = document.getElementById('userSearch');
+    const sugg = document.getElementById('sugg');
+    const selected = document.getElementById('selected');
+    const participants = document.getElementById('participants');
+    const splitModeSel = document.getElementById('split_mode');
+    const sharesWrap = document.getElementById('sharesWrap');
+    const sharesHidden = document.getElementById('shares');
+    const totals = document.getElementById('totals');
+
+    let selectedUsers = []; // {id, name}
+
+    async function search(q){
+      if(!q||q.trim().length<1){ sugg.style.display='none'; return; }
+      const res = await fetch(`/search_users?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      const users = data.users || [];
+      sugg.innerHTML = users.length? users.map(u=>`<div class="sugg-item" onclick="addUser(${u.id}, '${String(u.name).replace(/["']/g,'')}' )">${u.name} (${u.phone||''})</div>`).join('') : '<div class="sugg-item">No matches</div>';
+      sugg.style.display='block';
+    }
+
+    input.addEventListener('input', ()=> search(input.value));
+    document.addEventListener('click', (e)=>{ if(!sugg.contains(e.target) && e.target!==input) sugg.style.display='none'; });
+
+    function addUser(id, name){
+      if(selectedUsers.some(u=>u.id===id)) return;
+      selectedUsers.push({id, name});
+      renderSelected(); renderShares();
+    }
+    function removeUser(id){ selectedUsers = selectedUsers.filter(u=>u.id!==id); renderSelected(); renderShares(); }
+    function renderSelected(){
+      participants.value = selectedUsers.map(u=>u.id).join(',');
+      selected.innerHTML = selectedUsers.map(u=>`<span class="pill">${u.name}<span class="x" onclick="removeUser(${u.id})">✕</span></span>`).join('');
+    }
+
+    function renderShares(){
+      const mode = splitModeSel.value;
+      if(selectedUsers.length===0){ sharesWrap.style.display='none'; totals.style.display='none'; sharesHidden.value=''; return; }
+      if(mode==='equal'){
+        sharesWrap.style.display='none';
+        totals.style.display='block';
+        const total = parseFloat(document.getElementById('total_amount').value||'0')||0;
+        const share = selectedUsers.length? total/selectedUsers.length : 0;
+        totals.textContent = `Each pays: ৳${share.toFixed(2)} (Total: ৳${total.toFixed(2)})`;
+        sharesHidden.value = '';
+      }else{
+        sharesWrap.style.display='block'; totals.style.display='block';
+        const total = parseFloat(document.getElementById('total_amount').value||'0')||0;
+        const rows = selectedUsers.map(u=>`<div class="row"><label>${u.name}</label><input type="number" min="0" step="0.01" id="share_${u.id}" oninput="onShareChange()" /></div>`).join('');
+        sharesWrap.innerHTML = rows;
+        onShareChange();
+      }
+    }
+
+    function onShareChange(){
+      const total = parseFloat(document.getElementById('total_amount').value||'0')||0;
+      let sum=0, parts=[];
+      selectedUsers.forEach(u=>{ const v=parseFloat((document.getElementById('share_'+u.id)?.value||'0'))||0; sum+=v; if(v>0) parts.push(`${u.id}:${v.toFixed(2)}`); });
+      sharesHidden.value = parts.join(';');
+      totals.textContent = `Sum of shares: ৳${sum.toFixed(2)} / Total: ৳${total.toFixed(2)}`;
+    }
+
+    splitModeSel.addEventListener('change', renderShares);
+    document.getElementById('total_amount').addEventListener('input', renderShares);
+
+  </script>
+  <div class="back-button-container">
+    <button class="back-button" onclick="location.href='{{ url_for('dashboard.dashboard') }}'">Back</button>
+  </div>
+</body>
+</html>
+
