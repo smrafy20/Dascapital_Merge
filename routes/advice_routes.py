@@ -81,7 +81,7 @@ def api_financial_summary():
     }
 
     # Generate AI advice with safe fallback if not configured
-    advice_text = get_gemini_advice({
+    advice_text, advice_source = get_gemini_advice({
         'total_income': total_income,
         'total_expenses': total_expenses,
         'savings_rate': savings_rate,
@@ -89,10 +89,10 @@ def api_financial_summary():
         'goals': goals_payload,
     })
 
-    return jsonify(success=True, data=summary, goals=goals_payload, ai_advice=advice_text)
+    return jsonify(success=True, data=summary, goals=goals_payload, ai_advice=advice_text, ai_source=advice_source)
 
 
-def get_gemini_advice(financial_summary: dict) -> str:
+def get_gemini_advice(financial_summary: dict):
     """Call Gemini to generate 3 actionable tips with disclaimer.
     Falls back to a local template if GEMINI_API_KEY isn't set or library missing.
     Incorporates simple market data if available.
@@ -107,7 +107,7 @@ def get_gemini_advice(financial_summary: dict) -> str:
 
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model_name = os.getenv('GEMINI_MODEL', 'gemini-1.5-flash')
+        model_name = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')
         model = genai.GenerativeModel(model_name)
 
         ti = financial_summary.get('total_income', 0.0)
@@ -146,7 +146,25 @@ Requirements:
 4) End with this line verbatim: "Disclaimer: This is for informational purposes only and not professional financial advice."
 """
 
-        resp = model.generate_content(prompt)
+        # Try primary model
+        try:
+            resp = model.generate_content(prompt)
+            used_model = model_name
+        except Exception as model_err:
+            # Attempt fallback to widely-available model
+            fallback_model = 'gemini-1.5-flash'
+            try:
+                model = genai.GenerativeModel(fallback_model)
+                resp = model.generate_content(prompt)
+                used_model = fallback_model
+                try:
+                    print('Gemini primary model failed:', str(model_err))
+                except Exception:
+                    pass
+            except Exception as second_err:
+                # Re-raise original; outer except will craft local fallback
+                raise RuntimeError(f'Both models failed: primary={model_name}, fallback={fallback_model}; cause={second_err}')
+
         text = (getattr(resp, 'text', None) or "").strip()
         if not text:
             # Some SDK versions return candidates
@@ -159,19 +177,30 @@ Requirements:
         # Ensure disclaimer present
         if 'informational purposes' not in text.lower():
             text += "\n\nDisclaimer: This is for informational purposes only and not professional financial advice."
-        return text
+        # Explicit source flag
+        # Include which model we used for easier diagnostics
+        try:
+            print('Gemini advice generated via model:', used_model)
+        except Exception:
+            pass
+        return text, f'gemini:{used_model}'
     except Exception as e:
         # Fallback simple, local advice template
         ti = financial_summary.get('total_income', 0.0)
         te = financial_summary.get('total_expenses', 0.0)
         sr = financial_summary.get('savings_rate', 0.0)
         bal = financial_summary.get('current_balance', 0.0)
+        # Log a concise reason to the console to aid debugging
+        try:
+            print('Gemini fallback:', str(e))
+        except Exception:
+            pass
         generic = [
             f"1) Aim to keep expenses below income. Your current monthly savings rate is approx. {sr:.1f}%. Try automating a fixed transfer to savings right after income arrives.",
             f"2) Build a 3–6 month emergency fund. With a balance of ৳{bal:.0f}, consider dedicating part of new savings until you reach your target.",
             "3) Consider a diversified, low-cost index fund or a small crypto allocation only if your emergency fund is covered. Rebalance quarterly."
         ]
-        return "\n".join(generic) + "\n\nDisclaimer: This is for informational purposes only and not professional financial advice."
+        return "\n".join(generic) + "\n\nDisclaimer: This is for informational purposes only and not professional financial advice.", 'fallback'
 
 
 def fetch_market_data():
