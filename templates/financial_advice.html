@@ -45,7 +45,7 @@
     </div>
   <button class="btn" type="submit">Save Goal</button>
   </form>
-  <small>Note: Goal creation API will be added in a later step.</small>
+  <small>Create goals then edit or delete them below.</small>
   </div>
 
 <div class="card">
@@ -58,7 +58,8 @@
         <th style="text-align:right; padding:6px;">Current</th>
         <th style="text-align:right; padding:6px;">Target</th>
         <th style="text-align:right; padding:6px;">Progress</th>
-        <th style="text-align:left; padding:6px;">Due</th>
+  <th style="text-align:left; padding:6px;">Due</th>
+  <th style="text-align:left; padding:6px;">Actions</th>
       </tr>
     </thead>
     <tbody id="goals-body"></tbody>
@@ -111,28 +112,7 @@
         document.getElementById('ai-advice').after(hint);
       }
 
-      // Goals
-      const goals = json.goals || [];
-      const tbody = document.getElementById('goals-body');
-      tbody.innerHTML = '';
-      if (!goals.length) {
-        document.getElementById('goals-empty').style.display = 'block';
-        document.getElementById('goals-table').style.display = 'none';
-      } else {
-        document.getElementById('goals-empty').style.display = 'none';
-        document.getElementById('goals-table').style.display = 'table';
-        goals.forEach(g => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td style='padding:6px;'>${g.goal_name}</td>
-            <td style='padding:6px; text-align:right;'>৳${fmt(g.current_amount || 0)}</td>
-            <td style='padding:6px; text-align:right;'>৳${fmt(g.target_amount || 0)}</td>
-            <td style='padding:6px; text-align:right;'>${fmt(g.progress_pct || 0)}%</td>
-            <td style='padding:6px;'>${g.due_date || ''}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      }
+      renderGoals(json.goals || []);
     } else {
       document.getElementById('ai-advice').textContent = json.message || 'Failed to load advice';
     }
@@ -140,6 +120,123 @@
     document.getElementById('ai-advice').textContent = 'Error loading data.';
   }
 })();
+
+function renderGoals(goals){
+  const fmt = (n) => typeof n === 'number' ? n.toFixed(2) : n;
+  const tbody = document.getElementById('goals-body');
+  tbody.innerHTML='';
+  if(!goals.length){
+    document.getElementById('goals-empty').style.display='block';
+    document.getElementById('goals-table').style.display='none';
+    return;
+  }
+  document.getElementById('goals-empty').style.display='none';
+  document.getElementById('goals-table').style.display='table';
+  goals.forEach(g => {
+    const tr=document.createElement('tr');
+    tr.dataset.goalId=g.id;
+    tr.innerHTML=`
+      <td style='padding:6px;'>${g.goal_name}</td>
+      <td style='padding:6px; text-align:right;'>৳${fmt(g.current_amount || 0)}</td>
+      <td style='padding:6px; text-align:right;'>৳${fmt(g.target_amount || 0)}</td>
+      <td style='padding:6px; text-align:right;'>
+        <div style='display:flex; flex-direction:column; gap:4px;'>
+          <div style="position:relative; height:8px; background:#eee; border-radius:4px; overflow:hidden;">
+            <div style="position:absolute; left:0; top:0; height:100%; width:${Math.min(100, (g.progress_pct||0)).toFixed(2)}%; background:linear-gradient(90deg,#667eea,#764ba2);"></div>
+          </div>
+          <span style='font-size:12px;'>${fmt(g.progress_pct || 0)}%</span>
+        </div>
+      </td>
+      <td style='padding:6px;'>${g.due_date || ''}</td>
+      <td style='padding:6px;'>
+        <button class='btn btn-sm' onclick='startEditGoal(${g.id})'>Edit</button>
+        <button class='btn btn-sm btn-danger' onclick='deleteGoal(${g.id})'>Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function deleteGoal(id){
+  if(!confirm('Delete this goal?')) return;
+  const res = await fetch(`/api/goals/${id}/delete`, {method:'POST'});
+  const j = await res.json();
+  if(!j.success){ alert(j.message || 'Delete failed'); return; }
+  refreshGoals();
+}
+
+function startEditGoal(id){
+  const existing = document.querySelector('.goal-edit-row');
+  if(existing) existing.remove();
+  const row = document.querySelector(`tr[data-goal-id='${id}']`);
+  if(!row) return;
+  const cells = row.querySelectorAll('td');
+  const name = cells[0].innerText.trim();
+  const currentTxt = cells[1].innerText.replace('৳','').trim();
+  const targetTxt = cells[2].innerText.replace('৳','').trim();
+  const dueTxt = cells[4].innerText.trim();
+  const editRow = document.createElement('tr');
+  editRow.className='goal-edit-row';
+  editRow.innerHTML = `
+    <td colspan='6' style='padding:10px; background:#f9f9f9;'>
+      <form onsubmit='submitEditGoal(event, ${id})' style='display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end;'>
+        <div style='display:flex; flex-direction:column;'>
+          <label style='font-size:12px;'>Name</label>
+          <input name='goal_name' value='${name.replace(/'/g,"&#39;")}' required style='min-width:150px;'>
+        </div>
+        <div style='display:flex; flex-direction:column;'>
+          <label style='font-size:12px;'>Add Amount</label>
+          <input name='add_amount' type='number' step='0.01' placeholder='0.00' style='width:110px;'>
+        </div>
+        <div style='display:flex; flex-direction:column;'>
+          <label style='font-size:12px;'>Set Current</label>
+          <input name='current_amount' type='number' step='0.01' value='${currentTxt}' style='width:110px;'>
+        </div>
+        <div style='display:flex; flex-direction:column;'>
+          <label style='font-size:12px;'>Target</label>
+          <input name='target_amount' type='number' step='0.01' value='${targetTxt}' style='width:110px;' required>
+        </div>
+        <div style='display:flex; flex-direction:column;'>
+          <label style='font-size:12px;'>Due Date</label>
+            <input name='due_date' type='date' value='${dueTxt}'>
+        </div>
+        <div style='display:flex; gap:6px;'>
+          <button class='btn btn-sm' type='submit'>Save</button>
+          <button class='btn btn-sm btn-secondary' type='button' onclick='cancelEditGoal()'>Cancel</button>
+        </div>
+      </form>
+    </td>`;
+  row.after(editRow);
+}
+
+function cancelEditGoal(){
+  const existing = document.querySelector('.goal-edit-row');
+  if(existing) existing.remove();
+}
+
+function submitEditGoal(e, id){
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+  for(const [k,v] of Array.from(fd.entries())){
+    if(v === '' || v == null) fd.delete(k);
+  }
+  fetch(`/api/goals/${id}/update`, {method:'POST', body: fd})
+    .then(r=>r.json())
+    .then(j=>{
+      if(!j.success){ alert(j.message || 'Update failed'); return; }
+      cancelEditGoal();
+      refreshGoals();
+    })
+    .catch(()=>alert('Network error updating goal'));
+}
+
+async function refreshGoals(){
+  try{
+    const r = await fetch('/api/financial_summary', {method:'POST', headers:{'Content-Type':'application/json'}});
+    const j = await r.json();
+    if(j.success) renderGoals(j.goals || []);
+  }catch(e){ /* ignore */ }
+}
 
 // Handle goal creation without page reload
 document.getElementById('goal-form').addEventListener('submit', async function(e){
@@ -160,15 +257,7 @@ document.getElementById('goal-form').addEventListener('submit', async function(e
     const tbody = document.getElementById('goals-body');
     document.getElementById('goals-empty').style.display = 'none';
     document.getElementById('goals-table').style.display = 'table';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style='padding:6px;'>${g.goal_name}</td>
-      <td style='padding:6px; text-align:right;'>৳${fmt(g.current_amount || 0)}</td>
-      <td style='padding:6px; text-align:right;'>৳${fmt(g.target_amount || 0)}</td>
-      <td style='padding:6px; text-align:right;'>${fmt(g.progress_pct || 0)}%</td>
-      <td style='padding:6px;'>${g.due_date || ''}</td>
-    `;
-    tbody.prepend(tr);
+  refreshGoals();
     // Reset form
     this.reset();
   } catch(err) {

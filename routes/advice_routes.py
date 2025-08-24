@@ -321,3 +321,129 @@ def add_financial_goal():
     except Exception:
         db.session.rollback()
         return jsonify(success=False, message='Could not save goal'), 500
+
+
+@advice_bp.route('/api/goals', methods=['GET'])
+def list_financial_goals():
+    if 'user_id' not in session:
+        return jsonify(success=False, message='Not authenticated'), 401
+    goals = FinancialGoal.query.filter_by(user_id=session['user_id']).order_by(FinancialGoal.created_at.desc()).all()
+    payload = [
+        {
+            'id': g.id,
+            'goal_name': g.goal_name,
+            'target_amount': float(g.target_amount or 0),
+            'current_amount': float(g.current_amount or 0),
+            'created_at': (g.created_at.isoformat() if g.created_at else None),
+            'due_date': (g.due_date.isoformat() if g.due_date else None),
+            'progress_pct': (float(g.current_amount or 0) / float(g.target_amount) * 100.0) if g.target_amount else 0.0
+        }
+        for g in goals
+    ]
+    return jsonify(success=True, goals=payload)
+
+
+@advice_bp.route('/api/goals/<int:goal_id>/update', methods=['POST'])
+def update_financial_goal(goal_id: int):
+    if 'user_id' not in session:
+        return jsonify(success=False, message='Not authenticated'), 401
+    g = FinancialGoal.query.get(goal_id)
+    if not g or g.user_id != session['user_id']:
+        return jsonify(success=False, message='Goal not found'), 404
+
+    payload = request.get_json(silent=True) or {}
+    if not payload:
+        for field in ('current_amount', 'add_amount', 'goal_name', 'target_amount', 'due_date'):
+            if field in request.form:
+                payload[field] = request.form.get(field)
+
+    changed = False
+
+    add_amount_raw = payload.get('add_amount')
+    if add_amount_raw not in (None, ''):
+        try:
+            add_val = float(add_amount_raw)
+            if add_val < 0:
+                return jsonify(success=False, message='add_amount must be >= 0'), 400
+            g.current_amount += add_val
+            changed = True
+        except Exception:
+            return jsonify(success=False, message='Invalid add_amount'), 400
+
+    cur_raw = payload.get('current_amount')
+    if cur_raw not in (None, ''):
+        try:
+            cur_val = float(cur_raw)
+            if cur_val < 0:
+                return jsonify(success=False, message='current_amount must be >= 0'), 400
+            g.current_amount = cur_val
+            changed = True
+        except Exception:
+            return jsonify(success=False, message='Invalid current_amount'), 400
+
+    gn = payload.get('goal_name')
+    if isinstance(gn, str) and gn.strip():
+        g.goal_name = gn.strip()
+        changed = True
+
+    ta_raw = payload.get('target_amount')
+    if ta_raw not in (None, ''):
+        try:
+            ta_val = float(ta_raw)
+            if ta_val <= 0:
+                return jsonify(success=False, message='target_amount must be > 0'), 400
+            g.target_amount = ta_val
+            changed = True
+        except Exception:
+            return jsonify(success=False, message='Invalid target_amount'), 400
+
+    dd_raw = payload.get('due_date')
+    if dd_raw not in (None, ''):
+        if str(dd_raw).lower() in ('none', 'null'):
+            g.due_date = None
+            changed = True
+        else:
+            try:
+                from datetime import datetime as _dt
+                g.due_date = _dt.strptime(dd_raw, '%Y-%m-%d').date()
+                changed = True
+            except Exception:
+                return jsonify(success=False, message='Invalid due_date (YYYY-MM-DD)'), 400
+
+    if not changed:
+        return jsonify(success=False, message='No changes supplied'), 400
+
+    try:
+        if g.target_amount and g.current_amount > g.target_amount * 10:
+            return jsonify(success=False, message='Current amount unreasonably high relative to target'), 400
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify(success=False, message='Failed to update goal'), 500
+
+    resp = {
+        'id': g.id,
+        'goal_name': g.goal_name,
+        'target_amount': float(g.target_amount or 0),
+        'current_amount': float(g.current_amount or 0),
+        'created_at': (g.created_at.isoformat() if g.created_at else None),
+        'due_date': (g.due_date.isoformat() if g.due_date else None),
+        'progress_pct': (float(g.current_amount or 0) / float(g.target_amount) * 100.0) if g.target_amount else 0.0
+    }
+    return jsonify(success=True, goal=resp)
+
+
+@advice_bp.route('/api/goals/<int:goal_id>/delete', methods=['POST', 'DELETE'])
+def delete_financial_goal(goal_id: int):
+    if 'user_id' not in session:
+        return jsonify(success=False, message='Not authenticated'), 401
+    g = FinancialGoal.query.get(goal_id)
+    if not g or g.user_id != session['user_id']:
+        return jsonify(success=False, message='Goal not found'), 404
+    try:
+        db.session.delete(g)
+        db.session.commit()
+        return jsonify(success=True, deleted_id=goal_id)
+    except Exception:
+        db.session.rollback()
+        return jsonify(success=False, message='Failed to delete goal'), 500
