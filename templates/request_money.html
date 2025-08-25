@@ -6,7 +6,7 @@
   <title>Request Money</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <style>
-    .form { max-width: 480px; margin: 24px auto; }
+    .form { max-width: 480px; margin: 12px auto; }
     .form .row { margin-bottom: 12px; }
     .form label { display:block; font-weight:600; margin-bottom:6px; color:#374151; }
     .form input, .form textarea { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; }
@@ -16,6 +16,15 @@
     .pos-wrap { position:relative; }
   /* Ensure logo visibility */
   .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+
+  /* Card header/title */
+  .card h2 { margin: 0 0 12px 0; color: #0f2749; font-size:18px; }
+
+  /* Selected user display */
+  .selected-user { display:flex; align-items:center; gap:12px; padding:10px; border:1px solid #e5e7eb; border-radius:8px; background:#fbfdff; margin-bottom:12px; }
+  .selected-user .info { font-weight:600; color:#0f2749; }
+  .selected-user .sub { color:#6b7280; font-size:13px; }
+  .clear-btn { background:transparent; border:none; color:#ef4444; cursor:pointer; font-weight:700; }
   </style>
 </head>
 <body>
@@ -27,12 +36,24 @@
     </div>
   </nav>
   <div class="container">
-  <div class="card"><div class="card-body">
+    <div class="card"><div class="card-body">
+
       <form class="form" method="POST" action="{{ url_for('requests.request_money_submit') }}">
         <div class="row pos-wrap">
-          <label for="recipient_phone">Recipient Phone</label>
-          <input id="recipient_phone" name="recipient_phone" placeholder="Search name or phone" required />
+          <label for="recipient_phone">Recipient (search by name or phone)</label>
+          <input id="recipient_phone" name="recipient_phone" placeholder="Start typing a name or phone" autocomplete="off" required />
           <div id="sugg" class="sugg"></div>
+        </div>
+
+        <!-- selected user preview; hidden until a user is chosen -->
+        <div id="selected" class="selected-user" style="display:none;">
+          <div class="info-block">
+            <div class="info" id="sel-name">Name</div>
+            <div class="sub" id="sel-phone">+0 000 000 000</div>
+          </div>
+          <div style="margin-left:auto">
+            <button type="button" id="clear-selection" class="clear-btn">Clear</button>
+          </div>
         </div>
         <div class="row">
           <label for="amount">Amount</label>
@@ -43,7 +64,7 @@
           <textarea id="note" name="note" rows="3"></textarea>
         </div>
         <button class="btn primary" type="submit">Send Request</button>
-      </form>
+  </form>
     </div></div>
   </div>
 
@@ -51,13 +72,28 @@
     (function(){
       const input = document.getElementById('recipient_phone');
       const box = document.getElementById('sugg');
+      const selected = document.getElementById('selected');
+      const selName = document.getElementById('sel-name');
+      const selPhone = document.getElementById('sel-phone');
+      const clearBtn = document.getElementById('clear-selection');
       function render(list){
         if(!list||list.length===0){ box.innerHTML = '<div class="sugg-item">No matches</div>'; box.style.display='block'; return; }
         box.innerHTML = '';
         list.forEach(u=>{
           const div=document.createElement('div'); div.className='sugg-item';
           div.textContent = `${u.name} (${u.phone})`;
-          div.onclick = ()=>{ input.value = u.phone; box.style.display='none'; };
+          div.onclick = ()=>{
+            // populate the input and show selected user preview
+            input.value = u.phone;
+            box.style.display='none';
+            selName.textContent = u.name || u.phone;
+            selPhone.textContent = u.phone || '';
+            selected.style.display = 'flex';
+            // mark as selected (helpful if backend expects phone only)
+            input.dataset.selected = '1';
+            // move focus to amount
+            const amt = document.getElementById('amount'); if(amt) amt.focus();
+          };
           box.appendChild(div);
         });
         box.style.display='block';
@@ -69,7 +105,19 @@
         if(!data.success){ box.style.display='none'; return; }
         render(data.users);
       }
-      input.addEventListener('input', ()=> search(input.value));
+      input.addEventListener('input', ()=>{
+        // typing clears previous selection
+        if(input.dataset.selected){ delete input.dataset.selected; selected.style.display='none'; }
+        search(input.value);
+      });
+
+      clearBtn.addEventListener('click', ()=>{
+        input.value = '';
+        delete input.dataset.selected;
+        selected.style.display = 'none';
+        input.focus();
+      });
+
       document.addEventListener('click', (e)=>{ if(!box.contains(e.target) && e.target!==input) box.style.display='none'; });
     })();
   </script>
