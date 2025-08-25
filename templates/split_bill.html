@@ -12,8 +12,8 @@
   .form .row { margin-bottom: 18px; }
   .form label { display:block; font-weight:600; margin-bottom:6px; color:#374151; }
   .card-body { padding: 24px; }
-  /* navbar title larger */
-  .navbar .title { font-size: 20px; font-weight: 700; color: #0f2749; }
+  /* navbar title larger - ensure visible (override any default) */
+  .navbar .title { font-size: 20px; font-weight: 700; color:#fff !important; }
 
   /* section headers */
   .section-title { font-size: 14px; font-weight:700; margin: 12px 0 8px; color: #0f2749; border-bottom: 1px solid rgba(15,39,73,0.04); padding-bottom:6px; }
@@ -240,6 +240,50 @@
 
     splitModeSel.addEventListener('change', renderShares);
     document.getElementById('total_amount').addEventListener('input', renderShares);
+
+    // Toast setup (reusing pattern from request money page)
+    const toastWrap = document.createElement('div');
+    toastWrap.id = 'toast'; toastWrap.style.display='none'; toastWrap.style.position='fixed'; toastWrap.style.right='16px'; toastWrap.style.bottom='16px'; toastWrap.style.zIndex='2000';
+    toastWrap.innerHTML = '<div id="toast-inner" class="toast" style="background:#0f2749;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 8px 20px rgba(15,39,73,0.12);opacity:0;transform:translateY(8px);transition:opacity .18s ease, transform .18s ease;"></div>';
+    document.body.appendChild(toastWrap);
+    const toastInner = document.getElementById('toast-inner');
+    function showToast(message, opts={type:'success', duration:4000}){
+      toastInner.textContent = message;
+      toastInner.style.background = opts.type==='error'? '#ef4444':'#0f2749';
+      toastWrap.style.display='block';
+      requestAnimationFrame(()=>{ toastInner.style.opacity='1'; toastInner.style.transform='translateY(0)'; });
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>{ toastInner.style.opacity='0'; toastInner.style.transform='translateY(8px)'; setTimeout(()=> toastWrap.style.display='none', 220); }, opts.duration||4000);
+    }
+
+    // AJAX submit to keep user on page and show success toast
+    document.getElementById('splitForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      if(submitBtn.disabled) return; // guard
+      submitBtn.disabled = true; updateSubmitVisual(false);
+      const original = submitBtn.textContent; submitBtn.textContent = 'Creating...';
+      try {
+        const form = e.target;
+        const body = new URLSearchParams(new FormData(form));
+        const res = await fetch(form.action, { method: 'POST', headers: { 'Accept':'application/json', 'Content-Type':'application/x-www-form-urlencoded' }, body });
+        let data=null; try { data = await res.json(); } catch(err){}
+        if(res.ok && data && data.success){
+          showToast('Split bill created successfully.');
+          // reset form / state
+          form.reset();
+          selectedUsers = [];
+          renderSelected(); renderShares();
+        } else {
+          const msg = (data && data.message) ? data.message : 'Failed to create split bill.';
+          showToast(msg, {type:'error', duration:6000});
+        }
+      } catch(err){
+        showToast('Network error. Please try again.', {type:'error', duration:6000});
+      } finally {
+        submitBtn.textContent = original;
+        submitBtn.disabled = true; // stays disabled until valid again
+      }
+    });
 
     // Expose current user safely
     window.CURRENT_USER = {{ { 'id': current_user_id, 'name': current_user_name }|tojson }};

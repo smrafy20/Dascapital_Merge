@@ -24,7 +24,9 @@
   <nav class="navbar">
     <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
     <div class="title">My Split Shares</div>
-    <div class="nav-actions"></div>
+    <div class="nav-actions">
+      <a class="btn" href="{{ url_for('dashboard.dashboard') }}">Back to Dashboard</a>
+    </div>
   </nav>
   <div class="container page">
     <div class="card"><div class="card-body">
@@ -64,9 +66,7 @@
     function payShare(id){ call('pay', id); }
     function rejectShare(id){ call('reject', id); }
   </script>
-  <div class="back-button-container">
-    <button class="back-button" onclick="location.href='{{ url_for('dashboard.dashboard') }}'">Back</button>
-  </div>
+  <!-- Removed floating back button; back action now in navbar -->
 </body>
 </html>
 

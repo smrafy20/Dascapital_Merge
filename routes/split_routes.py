@@ -122,15 +122,19 @@ def split_bill_page():
             for pid, amt in shares:
                 u = User.query.get(pid)
                 if not u: continue
-                # do not create a notification for the creator about their own bill
                 if u.id == creator.id:
                     continue
                 db.session.add(Notification(user_id=u.id, type='split', title='Split Bill', message=f'{creator.full_name} created a split bill "{title}". Your share: {amt:.2f}.'))
             db.session.commit()
+            # If AJAX (expects JSON), return JSON success so page can show toast without redirect
+            if 'application/json' in (request.headers.get('Accept') or ''):
+                return jsonify(success=True, message='Split bill created successfully.')
             flash('Split bill created successfully!')
-            return redirect(url_for('dashboard.dashboard'))
+            return redirect(url_for('split.split_bill_page'))
         except Exception:
             db.session.rollback()
+            if 'application/json' in (request.headers.get('Accept') or ''):
+                return jsonify(success=False, message='Failed to create split bill. Please try again.'), 500
             flash('Failed to create split bill. Please try again.')
             return redirect(url_for('split.split_bill_page'))
 
