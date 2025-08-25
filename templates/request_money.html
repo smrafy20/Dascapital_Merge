@@ -14,18 +14,20 @@
     .sugg-item { padding:8px 10px; cursor:pointer; }
     .sugg-item:hover { background:#f3f4f6; }
     .pos-wrap { position:relative; }
-    /* Ensure logo visibility */
-    .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  /* Ensure logo visibility */
+  .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
   </style>
 </head>
 <body>
   <nav class="navbar">
     <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
     <div class="title">Request Money</div>
-    <div class="nav-actions"></div>
+    <div class="nav-actions">
+      <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+    </div>
   </nav>
   <div class="container">
-    <div class="card"><div class="card-body">
+  <div class="card"><div class="card-body">
       <form class="form" method="POST" action="{{ url_for('requests.request_money_submit') }}">
         <div class="row pos-wrap">
           <label for="recipient_phone">Recipient Phone</label>
@@ -71,8 +73,5 @@
       document.addEventListener('click', (e)=>{ if(!box.contains(e.target) && e.target!==input) box.style.display='none'; });
     })();
   </script>
-  <div class="back-button-container">
-    <button class="back-button" onclick="location.href='{{ url_for('dashboard.dashboard') }}'">Back</button>
-  </div>
 </body>
 </html>
