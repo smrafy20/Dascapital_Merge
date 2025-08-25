@@ -6,10 +6,23 @@
   <title>Request Money</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <style>
-    .form { max-width: 480px; margin: 12px auto; }
-    .form .row { margin-bottom: 12px; }
-    .form label { display:block; font-weight:600; margin-bottom:6px; color:#374151; }
-    .form input, .form textarea { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; }
+    .form { max-width: 480px; margin: 24px auto; }
+    .card-body { padding: 24px; }
+    .form .row { margin-bottom: 20px; }
+    .form label { display:block; font-weight:600; margin-bottom:6px; color:#0f2749; }
+    .form input, .form textarea { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; background: #fff; color: #0f2749; }
+    .form input::placeholder, .form textarea::placeholder { color: #9ca3af; }
+    .input-with-icon { position: relative; }
+    .input-with-icon .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+    .input-with-icon input { padding-left: 36px; }
+
+    /* Focus and accessibility */
+    .form input:focus, .form textarea:focus, .input-with-icon input:focus {
+      outline: none;
+      border-color: #0f2749;
+      box-shadow: 0 0 0 2px rgba(15, 39, 73, 0.10);
+    }
+    .form input:focus-visible, .form textarea:focus-visible { box-shadow: 0 0 0 2px rgba(15, 39, 73, 0.16); }
     .sugg { display:none; position:absolute; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.08); width:100%; z-index:1000; }
     .sugg-item { padding:8px 10px; cursor:pointer; }
     .sugg-item:hover { background:#f3f4f6; }
@@ -25,6 +38,42 @@
   .selected-user .info { font-weight:600; color:#0f2749; }
   .selected-user .sub { color:#6b7280; font-size:13px; }
   .clear-btn { background:transparent; border:none; color:#ef4444; cursor:pointer; font-weight:700; }
+
+  /* Modal Styles */
+  .modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+  .modal-content { background-color: #fff; margin: 15% auto; padding: 24px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .modal h2 { font-size: 20px; color: #0f2749; margin-top: 0; }
+  .modal p { margin-bottom: 24px; color: #374151; }
+  .modal-actions { display: flex; justify-content: center; gap: 12px; }
+  .modal-actions .btn { flex: 1; }
+  .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
+  .close-btn:hover, .close-btn:focus { color: #374151; }
+  
+  /* Primary button visual improvements */
+  .btn.primary {
+    background: #0f2749;
+    color: #ffffff;
+    padding: 12px 16px;
+    border-radius: 10px;
+    box-shadow: 0 6px 12px rgba(15,39,73,0.08);
+    border: none;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    font-weight: 600;
+  }
+  .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(15,39,73,0.12); }
+  .btn.primary:active { transform: translateY(0); }
+
+  /* Full width on small screens for easier tapping */
+  @media (max-width: 520px) {
+    .btn.primary { width: 100%; display: block; }
+  }
+
+  /* Toast notification styles */
+  #toast { position: fixed; right: 16px; bottom: 16px; z-index: 2000; }
+  .toast { background: #0f2749; color: #fff; padding: 10px 14px; border-radius: 8px; box-shadow: 0 8px 20px rgba(15,39,73,0.12); opacity: 0; transform: translateY(8px); transition: opacity .18s ease, transform .18s ease; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { background: #ef4444; }
   </style>
 </head>
 <body>
@@ -38,10 +87,13 @@
   <div class="container">
     <div class="card"><div class="card-body">
 
-      <form class="form" method="POST" action="{{ url_for('requests.request_money_submit') }}">
+      <form id="request-form" class="form" method="POST" action="{{ url_for('requests.request_money_submit') }}">
         <div class="row pos-wrap">
           <label for="recipient_phone">Recipient (search by name or phone)</label>
-          <input id="recipient_phone" name="recipient_phone" placeholder="Start typing a name or phone" autocomplete="off" required />
+          <div class="input-with-icon">
+            <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg></span>
+            <input id="recipient_phone" name="recipient_phone" placeholder="Start typing a name or phone" autocomplete="off" required />
+          </div>
           <div id="sugg" class="sugg"></div>
         </div>
 
@@ -57,25 +109,51 @@
         </div>
         <div class="row">
           <label for="amount">Amount</label>
-          <input id="amount" name="amount" type="number" min="1" step="0.01" required />
+          <div class="input-with-icon">
+            <span class="icon"><strong>$</strong></span>
+            <input id="amount" name="amount" type="number" min="1" step="0.01" required />
+          </div>
         </div>
         <div class="row">
           <label for="note">Note (optional)</label>
           <textarea id="note" name="note" rows="3"></textarea>
         </div>
         <button class="btn primary" type="submit">Send Request</button>
-  </form>
+      </form>
     </div></div>
+  </div>
+
+  <div id="confirmation-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>Confirm Request</h2>
+      <p id="modal-summary">You are about to request money.</p>
+      <div class="modal-actions">
+        <button id="cancel-btn" class="btn">Cancel</button>
+        <button id="confirm-btn" class="btn primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite" aria-atomic="true" style="display:none;">
+    <div id="toast-inner" class="toast"></div>
   </div>
 
   <script>
     (function(){
+      const form = document.getElementById('request-form');
       const input = document.getElementById('recipient_phone');
       const box = document.getElementById('sugg');
       const selected = document.getElementById('selected');
       const selName = document.getElementById('sel-name');
       const selPhone = document.getElementById('sel-phone');
       const clearBtn = document.getElementById('clear-selection');
+      const modal = document.getElementById('confirmation-modal');
+      const modalSummary = document.getElementById('modal-summary');
+      const confirmBtn = document.getElementById('confirm-btn');
+      const cancelBtn = document.getElementById('cancel-btn');
+      const closeBtn = modal.querySelector('.close-btn');
+
       function render(list){
         if(!list||list.length===0){ box.innerHTML = '<div class="sugg-item">No matches</div>'; box.style.display='block'; return; }
         box.innerHTML = '';
@@ -89,6 +167,8 @@
             selName.textContent = u.name || u.phone;
             selPhone.textContent = u.phone || '';
             selected.style.display = 'flex';
+            // store name for modal
+            input.dataset.selectedName = u.name;
             // mark as selected (helpful if backend expects phone only)
             input.dataset.selected = '1';
             // move focus to amount
@@ -107,18 +187,91 @@
       }
       input.addEventListener('input', ()=>{
         // typing clears previous selection
-        if(input.dataset.selected){ delete input.dataset.selected; selected.style.display='none'; }
+        if(input.dataset.selected){
+          delete input.dataset.selected;
+          delete input.dataset.selectedName;
+          selected.style.display='none';
+        }
         search(input.value);
       });
 
       clearBtn.addEventListener('click', ()=>{
         input.value = '';
         delete input.dataset.selected;
+        delete input.dataset.selectedName;
         selected.style.display = 'none';
         input.focus();
       });
 
       document.addEventListener('click', (e)=>{ if(!box.contains(e.target) && e.target!==input) box.style.display='none'; });
+
+      // Modal logic
+      form.addEventListener('submit', (e) => {
+        e.preventDefault(); // stop form from submitting immediately
+        const amount = document.getElementById('amount').value;
+        const recipientName = input.dataset.selectedName || input.value;
+        modalSummary.innerHTML = `You are about to request <strong>$${parseFloat(amount).toFixed(2)}</strong> from <strong>${recipientName}</strong>.`;
+        modal.style.display = 'block';
+      });
+
+      // Submit via fetch and show toast on success/error
+      const toastWrap = document.getElementById('toast');
+      const toastInner = document.getElementById('toast-inner');
+      function showToast(message, opts = { type: 'success', duration: 4000 }){
+        toastInner.textContent = message;
+        toastInner.className = 'toast' + (opts.type === 'error' ? ' error' : '');
+        toastWrap.style.display = 'block';
+        requestAnimationFrame(()=> toastInner.classList.add('show'));
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(()=>{
+          toastInner.classList.remove('show');
+          setTimeout(()=> toastWrap.style.display = 'none', 200);
+        }, opts.duration || 4000);
+      }
+
+      confirmBtn.addEventListener('click', async () => {
+        confirmBtn.disabled = true;
+        const origText = confirmBtn.textContent;
+        confirmBtn.textContent = 'Sending...';
+        try {
+          const url = form.action;
+          const method = (form.method || 'POST').toUpperCase();
+          const body = new URLSearchParams(new FormData(form));
+          const res = await fetch(url, { method, headers: {'Content-Type':'application/x-www-form-urlencoded'}, body });
+          let data = null;
+          try { data = await res.json(); } catch(e) { /* ignore */ }
+          if(res.ok && (data === null || data.success === undefined || data.success === true)){
+            const amount = document.getElementById('amount').value || '0';
+            const recipientName = input.dataset.selectedName || input.value || '';
+            showToast(`Request sent — $${parseFloat(amount).toFixed(2)} to ${recipientName}`);
+            modal.style.display = 'none';
+            form.reset();
+            selected.style.display = 'none';
+          } else {
+            const msg = (data && data.message) ? data.message : `Failed to send request (${res.status})`;
+            showToast(msg, {type: 'error', duration: 6000});
+          }
+        } catch(err){
+          showToast('Network error. Please try again.', {type: 'error', duration: 6000});
+        } finally {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = origText;
+        }
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+
+      closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+
+      window.addEventListener('click', (e) => {
+        if (e.target == modal) {
+          modal.style.display = 'none';
+        }
+      });
     })();
   </script>
 </body>
