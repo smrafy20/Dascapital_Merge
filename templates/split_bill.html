@@ -6,19 +6,34 @@
   <title>Split Bill</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <style>
-    .page { max-width: 880px; margin: 18px auto; }
-    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+  .page { max-width: 880px; margin: 18px auto; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
     @media (max-width: 760px){ .grid2 { grid-template-columns: 1fr; } }
-    .form .row { margin-bottom: 12px; }
-    .form label { display:block; font-weight:600; margin-bottom:6px; color:#374151; }
+  .form .row { margin-bottom: 18px; }
+  .form label { display:block; font-weight:600; margin-bottom:6px; color:#374151; }
+  .card-body { padding: 24px; }
+  /* navbar title larger */
+  .navbar .title { font-size: 20px; font-weight: 700; color: #0f2749; }
+
+  /* section headers */
+  .section-title { font-size: 14px; font-weight:700; margin: 12px 0 8px; color: #0f2749; border-bottom: 1px solid rgba(15,39,73,0.04); padding-bottom:6px; }
     .form input, .form textarea, .form select { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; }
-    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:#eef2ff; border:1px solid #e5e7eb; border-radius:999px; }
-    .pill .x { cursor:pointer; color:#6b7280; }
-    .sugg { display:none; border:1px solid #e5e7eb; border-radius:8px; background:#fff; box-shadow:0 8px 20px rgba(0,0,0,0.06); max-height:220px; overflow:auto; margin-top:6px; }
-    .sugg-item { padding:10px 12px; cursor:pointer; }
-    .sugg-item:hover { background:#f3f4f6; }
+  .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:#eef2ff; border:1px solid #e5e7eb; border-radius:999px; }
+  .pill-avatar { width:28px; height:28px; border-radius:50%; background:#dbeafe; color:#0f2749; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; }
+  .pill .x { cursor:pointer; color:#6b7280; margin-left:6px; }
+  .pill-name { margin-right:6px; }
+  .sugg { display:none; border:1px solid #e5e7eb; border-radius:8px; background:#fff; box-shadow:0 8px 20px rgba(0,0,0,0.06); max-height:220px; overflow:auto; margin-top:6px; }
+  .sugg-item { padding:10px 12px; cursor:pointer; }
+  .sugg-item:hover { background:#f3f4f6; }
+  .sugg-item.focused { background:#eef2ff; }
+  .sugg-item strong { font-weight:700; }
+  .sugg-loading { padding:10px 12px; color:#6b7280; font-style:italic }
     /* Ensure logo visibility */
     .logo-btn { width: 120px; height: 40px; background-color: transparent; border: none; cursor: pointer; background-image: url('https://i.postimg.cc/nLt7Kfnk/Mobile-Banking-Logo.png'); background-size: contain; background-repeat: no-repeat; background-position: center; }
+  /* status colors */
+  .status-ok { color:#059669; }
+  .status-warn { color:#d97706; }
+  .status-error { color:#dc2626; font-weight:600; }
   </style>
 </head>
 <body>
@@ -42,8 +57,11 @@
           <div>
             <div class="row"><label>Search and add participants</label>
               <div style="display:flex; gap:8px; align-items:center">
-                <input id="userSearch" placeholder="Type a name or phone" />
-                <button id="addMeBtn" type="button" class="btn" title="Add yourself">Add me</button>
+                <div style="position:relative; flex:1; display:flex; align-items:center">
+                  <input id="userSearch" placeholder="Type a name or phone" aria-label="Search users by name or phone" />
+                  <button id="clearSearchBtn" type="button" aria-label="Clear search" title="Clear" style="position:absolute; right:8px; background:transparent; border:none; cursor:pointer; display:none">✕</button>
+                </div>
+                <button id="addMeBtn" type="button" class="btn" title="Add yourself" aria-label="Add yourself as participant">Add me</button>
               </div>
               <div id="sugg" class="sugg"></div>
               <div id="selected" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px"></div>
@@ -76,20 +94,64 @@
     const sharesWrap = document.getElementById('sharesWrap');
     const sharesHidden = document.getElementById('shares');
     const totals = document.getElementById('totals');
+  const submitBtn = document.getElementById('submitBtn');
 
     let selectedUsers = []; // {id, name}
 
-    async function search(q){
+    // debounce helper
+    function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this,args), wait); }; }
+
+    let suggItems = [];
+    let focusedIndex = -1;
+
+    async function doSearch(q){
       if(!q||q.trim().length<1){ sugg.style.display='none'; return; }
-      const res = await fetch(`/search_users?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      const users = data.users || [];
-      sugg.innerHTML = users.length? users.map(u=>`<div class="sugg-item" onclick="addUser(${u.id}, '${String(u.name).replace(/["']/g,'')}' )">${u.name} (${u.phone||''})</div>`).join('') : '<div class="sugg-item">No matches</div>';
+      // show loading
+      sugg.innerHTML = '<div class="sugg-loading">Searching...</div>';
       sugg.style.display='block';
+      try{
+        const res = await fetch(`/search_users?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        const users = data.users || [];
+        if(users.length===0){ sugg.innerHTML = '<div class="sugg-item">No matches</div>'; suggItems = []; focusedIndex=-1; return; }
+        // build items with highlighted match
+        const qlow = q.toLowerCase();
+        suggItems = users.map(u => {
+          const name = String(u.name||'');
+          const phone = u.phone||'';
+          // highlight occurrences in name and phone
+          const idx = name.toLowerCase().indexOf(qlow);
+          const displayName = idx>=0 ? (name.slice(0,idx)+'<strong>'+name.slice(idx, idx+qlow.length)+'</strong>'+name.slice(idx+qlow.length)) : name;
+          const content = `${displayName} ${phone? ' ('+phone+')':''}`;
+          return { id: u.id, name, content };
+        });
+        sugg.innerHTML = suggItems.map((it,i)=>`<div class="sugg-item" data-idx="${i}" tabindex="0">${it.content}</div>`).join('');
+        focusedIndex = -1;
+      }catch(e){ sugg.innerHTML = '<div class="sugg-item">Search failed</div>'; suggItems=[]; focusedIndex=-1; }
     }
 
-    input.addEventListener('input', ()=> search(input.value));
-    document.addEventListener('click', (e)=>{ if(!sugg.contains(e.target) && e.target!==input) sugg.style.display='none'; });
+    const doSearchDebounced = debounce(doSearch, 250);
+    input.addEventListener('input', ()=>{ const v = input.value || ''; document.getElementById('clearSearchBtn').style.display = v? 'block':'none'; doSearchDebounced(v); });
+    document.addEventListener('click', (e)=>{ if(!sugg.contains(e.target) && e.target!==input) { sugg.style.display='none'; focusedIndex=-1; } });
+
+    // keyboard navigation for suggestions
+    input.addEventListener('keydown', (e)=>{
+      if(sugg.style.display==='none') return;
+      const items = Array.from(sugg.querySelectorAll('.sugg-item'));
+      if(e.key === 'ArrowDown'){
+        e.preventDefault(); focusedIndex = Math.min(items.length-1, focusedIndex+1); updateFocus();
+      }else if(e.key === 'ArrowUp'){
+        e.preventDefault(); focusedIndex = Math.max(0, focusedIndex-1); updateFocus();
+      }else if(e.key === 'Enter'){
+        e.preventDefault(); if(focusedIndex>=0 && suggItems[focusedIndex]){ addUser(suggItems[focusedIndex].id, suggItems[focusedIndex].name); sugg.style.display='none'; document.getElementById('total_amount').focus(); }
+      }else if(e.key === 'Escape'){
+        sugg.style.display='none'; focusedIndex=-1; }
+    });
+
+    function updateFocus(){ const items = Array.from(sugg.querySelectorAll('.sugg-item')); items.forEach((it,i)=> it.classList.toggle('focused', i===focusedIndex)); if(focusedIndex>=0) items[focusedIndex].scrollIntoView({block:'nearest'}); }
+
+    // click on suggestion
+    sugg.addEventListener('click', (e)=>{ const item = e.target.closest('.sugg-item'); if(!item) return; const idx = parseInt(item.dataset.idx); if(!isNaN(idx) && suggItems[idx]){ addUser(suggItems[idx].id, suggItems[idx].name); sugg.style.display='none'; document.getElementById('total_amount').focus(); } });
 
     function addUser(id, name){
       if(selectedUsers.some(u=>u.id===id)) return;
@@ -99,7 +161,11 @@
     function removeUser(id){ selectedUsers = selectedUsers.filter(u=>u.id!==id); renderSelected(); renderShares(); }
     function renderSelected(){
       participants.value = selectedUsers.map(u=>u.id).join(',');
-      selected.innerHTML = selectedUsers.map(u=>`<span class="pill">${u.name}<span class="x" onclick="removeUser(${u.id})">✕</span></span>`).join('');
+      selected.innerHTML = selectedUsers.map(u=>{
+        const initials = (u.name||'').split(' ').map(s=>s[0]||'').slice(0,2).join('').toUpperCase();
+        const isYou = window.CURRENT_USER && window.CURRENT_USER.id === u.id;
+        return `<span class="pill"><span class="pill-avatar">${initials}</span><span class="pill-name">${u.name}${isYou? ' (you)':''}</span><span class="x" onclick="removeUser(${u.id})">✕</span></span>`;
+      }).join('');
     }
 
     function renderShares(){
@@ -111,9 +177,14 @@
         const total = parseFloat(document.getElementById('total_amount').value||'0')||0;
         const share = selectedUsers.length? total/selectedUsers.length : 0;
         const sumShares = selectedUsers.length ? (share * selectedUsers.length) : 0;
-        const remaining = Math.max(0, (total - sumShares));
-        totals.innerHTML = `Each pays: ৳${share.toFixed(2)} (Total: ৳${total.toFixed(2)})<div style="margin-top:6px;color:#6b7280">Remaining: ৳${remaining.toFixed(2)}</div>`;
+  const remaining = Math.max(0, (total - sumShares));
+  const remClass = remaining === 0 ? 'status-ok' : 'status-warn';
+  totals.innerHTML = `Each pays: ৳${share.toFixed(2)} (Total: ৳${total.toFixed(2)})<div style="margin-top:6px" class="${remClass}">Remaining: ৳${remaining.toFixed(2)}</div>`;
         sharesHidden.value = '';
+  // Enable submit in equal mode only if no remaining
+  const canSubmit = (total>0 && selectedUsers.length>0 && remaining===0);
+  submitBtn.disabled = !canSubmit;
+  updateSubmitVisual(canSubmit);
       }else{
         sharesWrap.style.display='block'; totals.style.display='block';
         const total = parseFloat(document.getElementById('total_amount').value||'0')||0;
@@ -128,8 +199,40 @@
       let sum=0, parts=[];
       selectedUsers.forEach(u=>{ const v=parseFloat((document.getElementById('share_'+u.id)?.value||'0'))||0; sum+=v; if(v>0) parts.push(`${u.id}:${v.toFixed(2)}`); });
       sharesHidden.value = parts.join(';');
-  totals.innerHTML = `Sum of shares: ৳${sum.toFixed(2)} / Total: ৳${total.toFixed(2)}<div style="margin-top:6px;color:#6b7280">Remaining: ৳${Math.max(0,(total - sum)).toFixed(2)}</div>`;
+      const diff = total - sum; // positive = remaining, negative = over
+      let statusHtml = '';
+      let canSubmit = true;
+      if(total<=0){
+        statusHtml = '<div class="status-warn" style="margin-top:6px">Enter a total amount to start splitting.</div>';
+        canSubmit = false;
+      } else if(selectedUsers.length===0){
+        statusHtml = '<div class="status-warn" style="margin-top:6px">Add at least one participant.</div>';
+        canSubmit = false;
+      } else if(diff > 0.005){ // allow tiny float tolerance
+        statusHtml = `<div class="status-warn" style="margin-top:6px">Remaining: ৳${diff.toFixed(2)} — allocate the rest.</div>`;
+        canSubmit = false;
+      } else if(diff < -0.005){
+        statusHtml = `<div class="status-error" style="margin-top:6px">Over allocated by ৳${Math.abs(diff).toFixed(2)} — reduce shares.</div>`;
+        canSubmit = false;
+      } else {
+        statusHtml = '<div class="status-ok" style="margin-top:6px">Shares balanced ✔</div>';
+      }
+      const remainingDisplay = diff;
+      totals.innerHTML = `Sum of shares: ৳${sum.toFixed(2)} / Total: ৳${total.toFixed(2)}${statusHtml}`;
+      submitBtn.disabled = !canSubmit;
+      updateSubmitVisual(canSubmit);
     }
+
+    function updateSubmitVisual(canSubmit){
+      if(canSubmit){
+        submitBtn.classList.add('valid-ready','pulse');
+      } else {
+        submitBtn.classList.remove('valid-ready','pulse');
+      }
+    }
+
+    // Initial visual state
+    updateSubmitVisual(false);
 
     splitModeSel.addEventListener('change', renderShares);
     document.getElementById('total_amount').addEventListener('input', renderShares);
@@ -144,6 +247,37 @@
       selectedUsers.push({id: cur.id, name: cur.name});
       renderSelected(); renderShares();
     });
+
+    // Clear search button
+    const clearBtn = document.getElementById('clearSearchBtn');
+    clearBtn.addEventListener('click', ()=>{ input.value = ''; clearBtn.style.display='none'; sugg.style.display='none'; input.focus(); });
+
+    // Paste handling: if pasted content is a phone number (digits), try search immediately
+    input.addEventListener('paste', (e)=>{
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      if(/^[0-9+\-()\s]{6,}$/.test(text)){
+        // feed to search
+        input.value = text.trim();
+        doSearchDebounced(input.value);
+        // allow default paste
+      }
+    });
+
+    // Drag & drop reorder for pills
+    function enablePillDrag(){
+      const container = selected;
+      let dragIdx = null;
+      container.addEventListener('dragstart', (e)=>{ const el = e.target.closest('.pill'); if(!el) return; dragIdx = Array.from(container.children).indexOf(el); e.dataTransfer.effectAllowed='move'; });
+      container.addEventListener('dragover', (e)=>{ e.preventDefault(); const over = e.target.closest('.pill'); if(!over) return; over.style.border = '1px dashed #0f2749'; });
+      container.addEventListener('dragleave', (e)=>{ const over = e.target.closest('.pill'); if(over) over.style.border='1px solid #e5e7eb'; });
+      container.addEventListener('drop', (e)=>{
+        e.preventDefault(); const over = e.target.closest('.pill'); if(!over) return; const toIdx = Array.from(container.children).indexOf(over);
+        // reorder selectedUsers
+        if(dragIdx===null) return; const item = selectedUsers.splice(dragIdx,1)[0]; selectedUsers.splice(toIdx,0,item); renderSelected(); renderShares();
+        Array.from(container.children).forEach(c=> c.style.border='1px solid #e5e7eb'); dragIdx = null;
+      });
+    }
+    enablePillDrag();
 
   </script>
   
