@@ -52,9 +52,10 @@ def split_bill_page():
         except Exception:
             flash('Invalid participants list.')
             return redirect(url_for('split.split_bill_page'))
-        participant_ids = list(dict.fromkeys(pid for pid in participant_ids if pid != creator.id))
+        # allow including creator in participant list (user may include themselves)
+        participant_ids = list(dict.fromkeys(participant_ids))
         if not participant_ids:
-            flash('Please select at least one participant (other than yourself).')
+            flash('Please select at least one participant.')
             return redirect(url_for('split.split_bill_page'))
 
         # Verify participants exist
@@ -116,6 +117,9 @@ def split_bill_page():
             for pid, amt in shares:
                 u = User.query.get(pid)
                 if not u: continue
+                # do not create a notification for the creator about their own bill
+                if u.id == creator.id:
+                    continue
                 db.session.add(Notification(user_id=u.id, type='split', title='Split Bill', message=f'{creator.full_name} created a split bill "{title}". Your share: {amt:.2f}.'))
             db.session.commit()
             flash('Split bill created successfully!')
@@ -125,7 +129,9 @@ def split_bill_page():
             flash('Failed to create split bill. Please try again.')
             return redirect(url_for('split.split_bill_page'))
 
-    return render_template('split_bill.html')
+    # GET: pass current user info so template can offer 'Add me' action
+    current_user = User.query.get(session['user_id'])
+    return render_template('split_bill.html', current_user_id=current_user.id, current_user_name=current_user.full_name)
 
 
 @split_bp.route('/split_shares', methods=['GET'])

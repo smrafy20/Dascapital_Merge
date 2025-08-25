@@ -25,7 +25,9 @@
   <nav class="navbar">
     <button class="logo-btn" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'"></button>
     <div class="title">Split Bill</div>
-    <div class="nav-actions"></div>
+    <div class="nav-actions">
+      <a class="btn" href="{{ url_for('dashboard.dashboard') }}">Back to Dashboard</a>
+    </div>
   </nav>
   <div class="container page">
     <div class="card"><div class="card-body">
@@ -39,7 +41,10 @@
           </div>
           <div>
             <div class="row"><label>Search and add participants</label>
-              <input id="userSearch" placeholder="Type a name or phone" />
+              <div style="display:flex; gap:8px; align-items:center">
+                <input id="userSearch" placeholder="Type a name or phone" />
+                <button id="addMeBtn" type="button" class="btn" title="Add yourself">Add me</button>
+              </div>
               <div id="sugg" class="sugg"></div>
               <div id="selected" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px"></div>
               <input type="hidden" id="participants" name="participants" />
@@ -66,6 +71,7 @@
     const sugg = document.getElementById('sugg');
     const selected = document.getElementById('selected');
     const participants = document.getElementById('participants');
+  const addMeBtn = document.getElementById('addMeBtn');
     const splitModeSel = document.getElementById('split_mode');
     const sharesWrap = document.getElementById('sharesWrap');
     const sharesHidden = document.getElementById('shares');
@@ -104,7 +110,9 @@
         totals.style.display='block';
         const total = parseFloat(document.getElementById('total_amount').value||'0')||0;
         const share = selectedUsers.length? total/selectedUsers.length : 0;
-        totals.textContent = `Each pays: ৳${share.toFixed(2)} (Total: ৳${total.toFixed(2)})`;
+        const sumShares = selectedUsers.length ? (share * selectedUsers.length) : 0;
+        const remaining = Math.max(0, (total - sumShares));
+        totals.innerHTML = `Each pays: ৳${share.toFixed(2)} (Total: ৳${total.toFixed(2)})<div style="margin-top:6px;color:#6b7280">Remaining: ৳${remaining.toFixed(2)}</div>`;
         sharesHidden.value = '';
       }else{
         sharesWrap.style.display='block'; totals.style.display='block';
@@ -120,16 +128,25 @@
       let sum=0, parts=[];
       selectedUsers.forEach(u=>{ const v=parseFloat((document.getElementById('share_'+u.id)?.value||'0'))||0; sum+=v; if(v>0) parts.push(`${u.id}:${v.toFixed(2)}`); });
       sharesHidden.value = parts.join(';');
-      totals.textContent = `Sum of shares: ৳${sum.toFixed(2)} / Total: ৳${total.toFixed(2)}`;
+  totals.innerHTML = `Sum of shares: ৳${sum.toFixed(2)} / Total: ৳${total.toFixed(2)}<div style="margin-top:6px;color:#6b7280">Remaining: ৳${Math.max(0,(total - sum)).toFixed(2)}</div>`;
     }
 
     splitModeSel.addEventListener('change', renderShares);
     document.getElementById('total_amount').addEventListener('input', renderShares);
 
+    // Expose current user safely
+    window.CURRENT_USER = {{ { 'id': current_user_id, 'name': current_user_name }|tojson }};
+    // Add current user to participants when 'Add me' clicked
+    addMeBtn.addEventListener('click', function(){
+      const cur = window.CURRENT_USER || null;
+      if(!cur || !cur.id) return;
+      if(selectedUsers.some(u=>u.id===cur.id)) return;
+      selectedUsers.push({id: cur.id, name: cur.name});
+      renderSelected(); renderShares();
+    });
+
   </script>
-  <div class="back-button-container">
-    <button class="back-button" onclick="location.href='{{ url_for('dashboard.dashboard') }}'">Back</button>
-  </div>
+  
 </body>
 </html>
 
