@@ -1,0 +1,42 @@
+Modifications made (branch: FineTune)
+
+1) templates/signup.html
+   - Removed the "Back" button from the actions area so the signup UI looks cleaner.
+   - Added a helper text under "Create PIN": "Must be at least 4 digits.".
+   - Implemented a show/hide toggle for the PIN field (button labeled Show/Hide).
+   - Added a new "Confirm PIN" field directly below the "Create PIN" field with its own show/hide toggle and an inline error element (#pinMatchError).
+   - Enforced digit-only input and maximum length for NID (10) and PIN (6) on the client side via JavaScript.
+   - Added visual validation styles (.invalid-input) so invalid fields display a red border and subtle glow.
+   - Added blur/touched tracking and updated validateForm() to:
+     * require PIN min length 4 to enable submit
+     * check PIN/Confirm PIN match (pinsMatch)
+     * toggle .invalid-input on invalid inputs (phone, email, nid, PIN, confirm PIN, names, dob)
+     * show/hide the #pinMatchError message in real-time
+   - Kept existing submit enabling/disabling logic but now requires pinsMatch as well.
+
+2) routes/auth_routes.py
+   - In the signup handler, added retrieval of `confirmPassword` from the POST data and a server-side check that `password == confirmPassword`. If they don't match, flash('PINs do not match.') and redirect back to signup.
+   - NOTE: I did not add a server-side minimum-length check for signup PIN here (existing forgot_pin endpoints do enforce min length). Consider adding a server-side PIN length check for parity with client validation.
+
+3) General UI/UX
+   - Client-side validation feedback improved: invalid fields get a clear red border when the user has interacted with them or entered invalid values.
+   - Real-time PIN match feedback prevents users from submitting mismatched PINs.
+
+Testing notes
+ - Launch app and open the signup page.
+ - Interact with fields and blur to see red-border invalid states for empty/invalid inputs.
+ - Try entering a PIN shorter than 4 digits — Create Account remains disabled.
+ - Enter matching PIN and Confirm PIN (both >=4 digits): when all other validations pass, Create Account becomes enabled.
+ - If PINs don't match and you submit, the server will flash: "PINs do not match." and redirect to the signup page.
+
+Potential follow-ups (optional)
+ - Add server-side PIN length validation in `routes/auth_routes.py` for signup (recommended).
+ - Enforce digit-only input on the confirmPassword field as well (client-side) to mirror the main PIN field.
+ - Replace textual Show/Hide buttons with an accessible icon and aria-labels for improved accessibility.
+ - Add unit/integration tests for signup edge cases.
+
+Files edited during this session:
+ - templates/signup.html
+ - routes/auth_routes.py
+
+

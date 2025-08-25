@@ -46,6 +46,12 @@ def signup():
         phone = request.form['phone']
         nid = request.form['nid']
         password = request.form['password']
+        confirm_password = request.form.get('confirmPassword')
+
+        # Ensure PINs match
+        if confirm_password is None or password != confirm_password:
+            flash('PINs do not match.')
+            return redirect(url_for('auth.signup'))
         dob_str = request.form['dob']
 
         # Convert date string to date object

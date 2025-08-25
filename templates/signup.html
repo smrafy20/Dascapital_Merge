@@ -39,6 +39,9 @@
     .btn-secondary { background-color: #ccc; color: #0f1c2e; }
     .error-message { color: #ff4444; background: rgba(255,255,255,0.8); padding: 8px 10px; border-radius: 4px; margin: 8px 0; }
     .flash { color: #ffdfdf; background: rgba(255,0,0,0.15); padding: 10px; border: 1px solid rgba(255,0,0,0.3); border-radius: 6px; margin-bottom: 12px; }
+    /* visual validation */
+    .invalid-input { border: 2px solid #ff4444 !important; box-shadow: 0 0 6px rgba(255,68,68,0.25); }
+    .helper-text { font-size: 12px; color: #aac5ea; margin-top: 6px; }
   </style>
 </head>
 
@@ -87,7 +90,20 @@
 
         <div class="form-group">
           <label for="password">Create PIN</label>
-          <input type="password" id="password" name="password" placeholder="Create PIN" required>
+          <div class="password-wrapper" style="position:relative;">
+            <input type="password" id="password" name="password" placeholder="Create PIN" required style="padding-right:72px;">
+            <button type="button" id="togglePassword" aria-label="Show PIN" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:#0f2749;font-weight:bold;cursor:pointer;">Show</button>
+          </div>
+          <div class="helper-text" style="font-size:12px;color:#aac5ea;margin-top:6px;">Must be at least 4 digits.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm PIN</label>
+          <div class="password-wrapper" style="position:relative;">
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm PIN" required style="padding-right:72px;">
+            <button type="button" id="toggleConfirm" aria-label="Show Confirm PIN" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:#0f2749;font-weight:bold;cursor:pointer;">Show</button>
+          </div>
+          <div id="pinMatchError" class="error-message" style="display:none;">PINs do not match.</div>
         </div>
 
         <div class="form-group">
@@ -102,7 +118,6 @@
 
         <div class="actions">
           <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Create Account</button>
-          <button type="button" class="btn btn-secondary" onclick="window.location.href='{{ url_for('auth.home') }}';">Back</button>
         </div>
       </form>
     </div>
@@ -117,6 +132,7 @@
       const email = form.elements['email'];
       const nid = form.elements['nid'];
       const password = form.elements['password'];
+  const confirmPassword = form.elements['confirmPassword'];
       const dob = form.elements['dob'];
       const checkbox = document.getElementById('termsCheckbox');
       const submitBtn = document.getElementById('submitBtn');
@@ -136,13 +152,45 @@
       capitalizeLive(firstName);
       capitalizeLive(lastName);
 
-      // Enforce digit-only input
+      // Enforce digit-only input (NID and PIN)
       const enforceDigitInput = (input, maxLength) => {
         input.addEventListener('input', () => {
           input.value = input.value.replace(/\D/g, '').slice(0, maxLength);
         });
       };
       enforceDigitInput(nid, 10);
+      enforceDigitInput(password, 6); // allow up to 6 digits for PIN
+
+      // show validation feedback only after user has interacted
+      [firstName, lastName, phone, email, nid, password, dob].forEach(el => {
+        el.addEventListener('blur', () => { el.dataset.touched = 'true'; validateForm(); });
+      });
+
+      // PIN show/hide toggles
+      const toggleBtn = document.getElementById('togglePassword');
+      const toggleConfirmBtn = document.getElementById('toggleConfirm');
+      toggleBtn.addEventListener('click', () => {
+        if (password.type === 'password') {
+          password.type = 'text';
+          toggleBtn.textContent = 'Hide';
+          toggleBtn.setAttribute('aria-label', 'Hide PIN');
+        } else {
+          password.type = 'password';
+          toggleBtn.textContent = 'Show';
+          toggleBtn.setAttribute('aria-label', 'Show PIN');
+        }
+      });
+      toggleConfirmBtn.addEventListener('click', () => {
+        if (confirmPassword.type === 'password') {
+          confirmPassword.type = 'text';
+          toggleConfirmBtn.textContent = 'Hide';
+          toggleConfirmBtn.setAttribute('aria-label', 'Hide Confirm PIN');
+        } else {
+          confirmPassword.type = 'password';
+          toggleConfirmBtn.textContent = 'Show';
+          toggleConfirmBtn.setAttribute('aria-label', 'Show Confirm PIN');
+        }
+      });
 
       // Phone validation
       phone.addEventListener('input', () => {
@@ -169,13 +217,17 @@
         validateForm();
       });
 
-      // Validate form for enabling submit
+  // Validate form for enabling submit
       const validateForm = () => {
         const isValidPhone = /^01\d{9}$/.test(phone.value);
         const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value);
         const isValidNID = /^\d{10}$/.test(nid.value);
         const isNameFilled = firstName.value.trim() && lastName.value.trim();
-        const isPasswordFilled = password.value.trim().length > 0;
+  const isPasswordFilled = password.value.trim().length >= 4; // require at least 4 digits
+  const isConfirmFilled = confirmPassword.value.trim().length >= 4;
+  const pinsMatch = password.value === confirmPassword.value && isPasswordFilled && isConfirmFilled;
+  const pinMatchErrorDiv = document.getElementById('pinMatchError');
+        const isValidPIN = /^\d{4,6}$/.test(password.value);
         const isDOBFilled = dob.value;
         const isChecked = checkbox.checked;
 
@@ -190,17 +242,41 @@
           isChecked
         });
 
-        if (isValidPhone && isValidEmail && isValidNID && isNameFilled && isPasswordFilled && isDOBFilled && isChecked) {
+  if (isValidPhone && isValidEmail && isValidNID && isNameFilled && isPasswordFilled && isDOBFilled && isChecked && pinsMatch) {
           submitBtn.disabled = false;
           console.log('Form is valid - enabling submit button');
         } else {
           submitBtn.disabled = true;
           console.log('Form is invalid - submit button disabled');
         }
+
+        // visual invalid states: show when user touched the field or entered something
+        const shouldShow = (el, valid) => {
+          const touched = el.dataset.touched === 'true';
+          return !valid && (touched || el.value.length > 0);
+        };
+
+        const setInvalid = (el, invalid) => {
+          if (invalid) el.classList.add('invalid-input'); else el.classList.remove('invalid-input');
+        };
+
+        setInvalid(firstName, shouldShow(firstName, !!firstName.value.trim()));
+        setInvalid(lastName, shouldShow(lastName, !!lastName.value.trim()));
+        setInvalid(phone, shouldShow(phone, isValidPhone));
+        setInvalid(email, shouldShow(email, isValidEmail));
+        setInvalid(nid, shouldShow(nid, isValidNID));
+        setInvalid(password, shouldShow(password, isValidPIN) || (shouldShow(confirmPassword, pinsMatch)) );
+        setInvalid(confirmPassword, shouldShow(confirmPassword, pinsMatch));
+        if (!pinsMatch && (confirmPassword.dataset.touched === 'true' || confirmPassword.value.length > 0)) {
+          pinMatchErrorDiv.style.display = 'block';
+        } else {
+          pinMatchErrorDiv.style.display = 'none';
+        }
+        setInvalid(dob, shouldShow(dob, !!dob.value));
       };
 
       // Attach to all inputs
-      [firstName, lastName, phone, email, nid, password, dob].forEach(input => {
+      [firstName, lastName, phone, email, nid, password, confirmPassword, dob].forEach(input => {
         input.addEventListener('input', validateForm);
       });
       checkbox.addEventListener('change', validateForm);
