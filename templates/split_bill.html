@@ -170,7 +170,7 @@
 
     function renderShares(){
       const mode = splitModeSel.value;
-      if(selectedUsers.length===0){ sharesWrap.style.display='none'; totals.style.display='none'; sharesHidden.value=''; return; }
+      if(selectedUsers.length===0){ sharesWrap.style.display='none'; totals.style.display='none'; sharesHidden.value=''; submitBtn.disabled = true; updateSubmitVisual(false); return; }
       if(mode==='equal'){
         sharesWrap.style.display='none';
         totals.style.display='block';
@@ -179,10 +179,14 @@
         const sumShares = selectedUsers.length ? (share * selectedUsers.length) : 0;
   const remaining = Math.max(0, (total - sumShares));
   const remClass = remaining === 0 ? 'status-ok' : 'status-warn';
-  totals.innerHTML = `Each pays: ৳${share.toFixed(2)} (Total: ৳${total.toFixed(2)})<div style="margin-top:6px" class="${remClass}">Remaining: ৳${remaining.toFixed(2)}</div>`;
+        let extraMsg = '';
+        if(selectedUsers.length < 2){
+          extraMsg = '<div class="status-error" style="margin-top:6px">Add at least 2 participants for equal split.</div>';
+        }
+        totals.innerHTML = `Each pays: ৳${share.toFixed(2)} (Total: ৳${total.toFixed(2)})<div style="margin-top:6px" class="${remClass}">Remaining: ৳${remaining.toFixed(2)}</div>${extraMsg}`;
         sharesHidden.value = '';
-  // Enable submit in equal mode only if no remaining
-  const canSubmit = (total>0 && selectedUsers.length>0 && remaining===0);
+        // Enable submit in equal mode only if no remaining AND at least 2 participants
+        const canSubmit = (total>0 && selectedUsers.length>=2 && remaining===0);
   submitBtn.disabled = !canSubmit;
   updateSubmitVisual(canSubmit);
       }else{

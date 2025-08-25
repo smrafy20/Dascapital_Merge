@@ -64,6 +64,11 @@ def split_bill_page():
             flash('One or more selected participants were not found.')
             return redirect(url_for('split.split_bill_page'))
 
+        # Additional validation: equal split must have at least 2 participants
+        if split_mode == 'equal' and len(participant_ids) < 2:
+            flash('Equal split requires at least 2 participants.')
+            return redirect(url_for('split.split_bill_page'))
+
         # Build shares
         shares = []  # list of (participant_id, amount)
         if split_mode == 'equal':
