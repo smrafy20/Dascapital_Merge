@@ -46,7 +46,8 @@ def notifications_latest():
     def serialize(n: Notification):
         # Provide a URL for actionable notifications (money requests)
         url = None
-        if (n.type or '').lower() == 'request' or (n.title or '').lower().startswith('money request'):
+        n_type = (n.type or '').lower()
+        if n_type == 'request' or (n.title or '').lower().startswith('money request'):
             # Try to extract request id token from message: [REQ_ID:123]
             import re
             m = re.search(r"\[REQ_ID:(\d+)\]", n.message or '')
@@ -54,6 +55,9 @@ def notifications_latest():
                 url = url_for('requests.request_detail', req_id=int(m.group(1)))
             else:
                 url = url_for('requests.requests_overview')
+        elif n_type == 'split':
+            # Direct users to their split shares page to act (pay/reject)
+            url = url_for('split.split_shares_page')
         return {
             'id': n.id,
             'type': n.type,

@@ -276,13 +276,15 @@
           return;
         }
         data.notifications.forEach(n => {
-          const actionable = (n.type || '').toLowerCase() === 'request' || (n.title || '').toLowerCase().includes('money request');
+          const t = (n.type || '').toLowerCase();
+          const actionable = t === 'request' || t === 'split' || (n.title || '').toLowerCase().includes('money request');
           const el = document.createElement('div');
           el.className = 'notif-item' + (actionable ? ' actionable' : '');
           el.setAttribute('data-url', n.url || '');
           if(actionable) el.setAttribute('aria-label','Open money request details');
           el.style.cursor = (n.url && actionable) ? 'pointer' : (n.url ? 'pointer' : 'default');
           const typePill = n.type ? `<span class='notif-pill'>${(n.type||'').toUpperCase()}</span>` : '';
+          if(n.type) el.setAttribute('data-type', t);
           el.innerHTML = `<div class="notif-title">${escapeHtml(n.title)}</div>
                           <div class="notif-message">${escapeHtml(n.message)}</div>
                           <div class="notif-meta">${n.created_at} ${typePill}</div>`;

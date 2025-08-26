@@ -40,6 +40,12 @@ body { display: flex; flex-direction: column; }
 .notif-item.actionable:active { background: rgba(255, 193, 7, 0.42); }
 .notif-item.actionable .notif-title { color:#ffd369; }
 .notif-item.actionable::after { content:'Tap to review'; position:absolute; top:8px; right:8px; font-size:10px; background:rgba(0,0,0,0.35); padding:2px 6px; border-radius:10px; color:#ffe8a1; letter-spacing:.5px; }
+/* Variant for split notifications (teal accent) */
+.notif-item.actionable[data-type="split"] { background: rgba(0, 196, 204, 0.20); border-left-color:#00c8d0; }
+.notif-item.actionable[data-type="split"]:hover { background: rgba(0, 196, 204, 0.32); }
+.notif-item.actionable[data-type="split"]:active { background: rgba(0, 196, 204, 0.44); }
+.notif-item.actionable[data-type="split"] .notif-title { color:#8df4ff; }
+.notif-item.actionable[data-type="split"]::after { background:rgba(0,40,48,0.45); color:#c6fbff; }
 .notif-item:last-child { border-bottom: none; }
 .notif-title { color: #fff; font-weight: 700; font-size: 14px; }
 .notif-message { font-size: 13px; }
