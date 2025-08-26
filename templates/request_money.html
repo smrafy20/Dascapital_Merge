@@ -63,6 +63,11 @@
   }
   .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(15,39,73,0.12); }
   .btn.primary:active { transform: translateY(0); }
+  .btn.primary:disabled { background:#9ca3af; box-shadow:none; cursor:not-allowed; transform:none; opacity:.7; }
+  .btn.primary.valid-ready { background:#2563eb; box-shadow:0 6px 14px rgba(37,99,235,0.35); }
+  .btn.primary.valid-ready:hover { background:#1d4ed8; }
+  @keyframes pulseReq { 0%{ box-shadow:0 0 0 0 rgba(37,99,235,0.45);} 70%{ box-shadow:0 0 0 10px rgba(37,99,235,0);} 100%{ box-shadow:0 0 0 0 rgba(37,99,235,0);} }
+  .btn.primary.valid-ready.pulse { animation:pulseReq 2.4s ease-in-out infinite; }
 
   /* Full width on small screens for easier tapping */
   @media (max-width: 520px) {
@@ -118,7 +123,7 @@
           <label for="note">Note (optional)</label>
           <textarea id="note" name="note" rows="3"></textarea>
         </div>
-        <button class="btn primary" type="submit">Send Request</button>
+  <button class="btn primary" id="submitBtn" type="submit" disabled>Send Request</button>
       </form>
     </div></div>
   </div>
@@ -141,7 +146,8 @@
 
   <script>
     (function(){
-      const form = document.getElementById('request-form');
+  const form = document.getElementById('request-form');
+  const submitBtn = document.getElementById('submitBtn');
       const input = document.getElementById('recipient_phone');
       const box = document.getElementById('sugg');
       const selected = document.getElementById('selected');
@@ -153,6 +159,14 @@
       const confirmBtn = document.getElementById('confirm-btn');
       const cancelBtn = document.getElementById('cancel-btn');
       const closeBtn = modal.querySelector('.close-btn');
+
+      function updateSubmitState(){
+        const amtVal = parseFloat(document.getElementById('amount').value||'0');
+        const hasRecipient = !!input.dataset.selected; // ensure user chosen from list
+        const valid = hasRecipient && amtVal > 0;
+        submitBtn.disabled = !valid;
+        if(valid){ submitBtn.classList.add('valid-ready','pulse'); } else { submitBtn.classList.remove('valid-ready','pulse'); }
+      }
 
       function render(list){
         if(!list||list.length===0){ box.innerHTML = '<div class="sugg-item">No matches</div>'; box.style.display='block'; return; }
@@ -173,6 +187,7 @@
             input.dataset.selected = '1';
             // move focus to amount
             const amt = document.getElementById('amount'); if(amt) amt.focus();
+            updateSubmitState();
           };
           box.appendChild(div);
         });
@@ -193,6 +208,7 @@
           selected.style.display='none';
         }
         search(input.value);
+        updateSubmitState();
       });
 
       clearBtn.addEventListener('click', ()=>{
@@ -201,12 +217,13 @@
         delete input.dataset.selectedName;
         selected.style.display = 'none';
         input.focus();
+        updateSubmitState();
       });
 
       document.addEventListener('click', (e)=>{ if(!box.contains(e.target) && e.target!==input) box.style.display='none'; });
 
       // Modal logic
-      form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', (e) => {
         e.preventDefault(); // stop form from submitting immediately
         const amount = document.getElementById('amount').value;
         const recipientName = input.dataset.selectedName || input.value;
@@ -229,7 +246,7 @@
         }, opts.duration || 4000);
       }
 
-      confirmBtn.addEventListener('click', async () => {
+  confirmBtn.addEventListener('click', async () => {
         confirmBtn.disabled = true;
         const origText = confirmBtn.textContent;
         confirmBtn.textContent = 'Sending...';
@@ -247,6 +264,8 @@
             modal.style.display = 'none';
             form.reset();
             selected.style.display = 'none';
+    delete input.dataset.selected; delete input.dataset.selectedName;
+    updateSubmitState();
           } else {
             const msg = (data && data.message) ? data.message : `Failed to send request (${res.status})`;
             showToast(msg, {type: 'error', duration: 6000});
@@ -272,6 +291,11 @@
           modal.style.display = 'none';
         }
       });
+      // Enable/disable when amount changes
+      document.getElementById('amount').addEventListener('input', updateSubmitState);
+      // Initial state
+      updateSubmitState();
+
     })();
   </script>
 </body>

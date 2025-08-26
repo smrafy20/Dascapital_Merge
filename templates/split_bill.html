@@ -134,6 +134,17 @@
     input.addEventListener('input', ()=>{ const v = input.value || ''; document.getElementById('clearSearchBtn').style.display = v? 'block':'none'; doSearchDebounced(v); });
     document.addEventListener('click', (e)=>{ if(!sugg.contains(e.target) && e.target!==input) { sugg.style.display='none'; focusedIndex=-1; } });
 
+    function selectSuggestion(idx){
+      if(idx<0 || !suggItems[idx]) return;
+      addUser(suggItems[idx].id, suggItems[idx].name);
+      // clear search box & hide suggestions
+      input.value = '';
+      document.getElementById('clearSearchBtn').style.display='none';
+      sugg.style.display='none';
+      focusedIndex = -1;
+      // move focus to total amount for faster entry
+      document.getElementById('total_amount').focus();
+    }
     // keyboard navigation for suggestions
     input.addEventListener('keydown', (e)=>{
       if(sugg.style.display==='none') return;
@@ -143,7 +154,7 @@
       }else if(e.key === 'ArrowUp'){
         e.preventDefault(); focusedIndex = Math.max(0, focusedIndex-1); updateFocus();
       }else if(e.key === 'Enter'){
-        e.preventDefault(); if(focusedIndex>=0 && suggItems[focusedIndex]){ addUser(suggItems[focusedIndex].id, suggItems[focusedIndex].name); sugg.style.display='none'; document.getElementById('total_amount').focus(); }
+        e.preventDefault(); if(focusedIndex>=0){ selectSuggestion(focusedIndex); }
       }else if(e.key === 'Escape'){
         sugg.style.display='none'; focusedIndex=-1; }
     });
@@ -151,7 +162,7 @@
     function updateFocus(){ const items = Array.from(sugg.querySelectorAll('.sugg-item')); items.forEach((it,i)=> it.classList.toggle('focused', i===focusedIndex)); if(focusedIndex>=0) items[focusedIndex].scrollIntoView({block:'nearest'}); }
 
     // click on suggestion
-    sugg.addEventListener('click', (e)=>{ const item = e.target.closest('.sugg-item'); if(!item) return; const idx = parseInt(item.dataset.idx); if(!isNaN(idx) && suggItems[idx]){ addUser(suggItems[idx].id, suggItems[idx].name); sugg.style.display='none'; document.getElementById('total_amount').focus(); } });
+  sugg.addEventListener('click', (e)=>{ const item = e.target.closest('.sugg-item'); if(!item) return; const idx = parseInt(item.dataset.idx); if(!isNaN(idx)){ selectSuggestion(idx); } });
 
     function addUser(id, name){
       if(selectedUsers.some(u=>u.id===id)) return;

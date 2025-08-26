@@ -173,7 +173,8 @@ def split_shares_page():
             'status': s.status,
             'title': b.title,
             'creator': users.get(b.creator_id).full_name if users.get(b.creator_id) else 'Unknown',
-            'destination': users.get(b.destination_id).full_name if b.destination_id and users.get(b.destination_id) else users.get(b.creator_id).full_name if users.get(b.creator_id) else 'Unknown',
+            # Show destination phone number instead of name (privacy / requirement)
+            'destination': users.get(b.destination_id).phone if b.destination_id and users.get(b.destination_id) else users.get(b.creator_id).phone if users.get(b.creator_id) else 'Unknown',
             'created_at': b.created_at.strftime('%Y-%m-%d %H:%M') if b.created_at else '',
             'paid_at': s.paid_at.strftime('%Y-%m-%d %H:%M') if s.paid_at else '',
         })
@@ -216,7 +217,8 @@ def split_share_process():
             db.session.add(Transaction(user_id=payer.id, trx_id=trx_id_base+'D', type='send', amount=share.amount, method='split', source_dest=str(destination.phone)))
             db.session.add(Transaction(user_id=destination.id, trx_id=trx_id_base+'C', type='add', amount=share.amount, method='split', source_dest=str(payer.phone)))
             db.session.add(Notification(user_id=destination.id, type='credit', title='Split Bill Paid', message=f'{payer.full_name} paid {share.amount:.2f} for "{bill.title}"'))
-            db.session.add(Notification(user_id=payer.id, type='debit', title='Split Share Paid', message=f'You paid {share.amount:.2f} to {destination.full_name} for "{bill.title}"'))
+            # Replace destination (receiver) name with phone number per requirement
+            db.session.add(Notification(user_id=payer.id, type='debit', title='Split Share Paid', message=f'You paid {share.amount:.2f} to {destination.phone} for "{bill.title}"'))
             share.status = 'paid'
             share.paid_at = datetime.utcnow()
         else:
