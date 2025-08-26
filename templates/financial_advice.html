@@ -68,6 +68,7 @@
 {% endblock %}
 
 {% block header %}{% endblock %}
+{% block flashes %}{% endblock %}
 
 {% block scripts %}
 <script>
@@ -94,23 +95,7 @@
         srcEl.textContent = src.startsWith('gemini:') ? `Gemini (${src.split(':')[1]})` : 'Local fallback';
       }
 
-      // If fallback, render a quick setup hint
-      if (!src || src === 'fallback') {
-        const hint = document.createElement('div');
-        hint.style.cssText = 'margin-top:8px; padding:10px; background:#fff7e6; border:1px solid #ffe58f; border-radius:8px; color:#8b6b00;';
-        hint.innerHTML = `
-          <strong>Using local fallback advice.</strong>
-          <div style="margin-top:6px;">
-            To enable Gemini:
-            <ol style="margin:6px 0 0 18px;">
-              <li>Copy <code>.env.example</code> to <code>.env</code>.</li>
-              <li>Set <code>GEMINI_API_KEY</code> with your key (Google AI Studio).</li>
-              <li>Optionally set <code>GEMINI_MODEL</code> (default: gemini-2.0-flash).</li>
-              <li>Restart the server.</li>
-            </ol>
-          </div>`;
-        document.getElementById('ai-advice').after(hint);
-      }
+  // (Fallback hint removed to avoid extra toast-style message)
 
       renderGoals(json.goals || []);
     } else {
