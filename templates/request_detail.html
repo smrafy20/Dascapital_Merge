@@ -39,7 +39,7 @@
         <div class="empty">Request not found</div>
       {% endif %}
       <div class="back-button-container">
-        <button class="back-button" onclick="window.location.href='{{ url_for('requests.requests_overview') }}'">Back</button>
+        <button class="back-button" onclick="window.location.href='{{ url_for('dashboard.dashboard') }}'">Back</button>
       </div>
     </div></div>
   </div>
@@ -49,7 +49,7 @@
         const res = await fetch('/requests/api/process', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, action})});
         const data = await res.json();
         if(!data.success){ alert(data.message || 'Failed'); return; }
-        window.location.href = '{{ url_for('requests.requests_overview') }}';
+        window.location.href = '{{ url_for('dashboard.dashboard') }}';
       }catch(e){ alert('Failed'); }
     }
   </script>
